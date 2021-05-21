@@ -1,0 +1,27 @@
+[
+{
+  "directory": "/home/rujas/code_workspace/enigma4/build",
+  "command": "/usr/bin/c++  -isystem /home/rujas/code_workspace/enigma4/cryptography/include -g -o CMakeFiles/enigma4.dir/main.cc.o -c /home/rujas/code_workspace/enigma4/main.cc",
+  "file": "/home/rujas/code_workspace/enigma4/main.cc"
+},
+{
+  "directory": "/home/rujas/code_workspace/enigma4/build",
+  "command": "/usr/bin/c++  -isystem /home/rujas/code_workspace/enigma4/cryptography/include -g -o CMakeFiles/enigma4.dir/server.cc.o -c /home/rujas/code_workspace/enigma4/server.cc",
+  "file": "/home/rujas/code_workspace/enigma4/server.cc"
+},
+{
+  "directory": "/home/rujas/code_workspace/enigma4/build",
+  "command": "/usr/bin/c++  -isystem /home/rujas/code_workspace/enigma4/cryptography/include -g -o CMakeFiles/enigma4.dir/onion_routing.cc.o -c /home/rujas/code_workspace/enigma4/onion_routing.cc",
+  "file": "/home/rujas/code_workspace/enigma4/onion_routing.cc"
+},
+{
+  "directory": "/home/rujas/code_workspace/enigma4/build",
+  "command": "/usr/bin/c++  -isystem /home/rujas/code_workspace/enigma4/cryptography/include -g -o CMakeFiles/enigma4.dir/message.cc.o -c /home/rujas/code_workspace/enigma4/message.cc",
+  "file": "/home/rujas/code_workspace/enigma4/message.cc"
+},
+{
+  "directory": "/home/rujas/code_workspace/enigma4/build",
+  "command": "/usr/bin/c++  -isystem /home/rujas/code_workspace/enigma4/cryptography/include -g -o CMakeFiles/enigma4.dir/util.cc.o -c /home/rujas/code_workspace/enigma4/util.cc",
+  "file": "/home/rujas/code_workspace/enigma4/util.cc"
+}
+]
