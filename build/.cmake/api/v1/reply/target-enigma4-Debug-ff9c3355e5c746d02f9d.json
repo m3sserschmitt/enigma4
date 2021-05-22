@@ -33,6 +33,12 @@
 				"file" : 0,
 				"line" : 15,
 				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 16,
+				"parent" : 0
 			}
 		]
 	},
@@ -83,7 +89,12 @@
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "../cryptography/build/libcryptography-dev.so",
+				"fragment" : "../cryptography/build/libcryptography.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-lpthread",
 				"role" : "libraries"
 			}
 		],

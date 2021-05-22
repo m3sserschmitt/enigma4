@@ -5,6 +5,7 @@ CMakeFiles/enigma4.dir/main.cc.o: ../cryptography/include/aes.hh
 CMakeFiles/enigma4.dir/main.cc.o: ../cryptography/include/base64.hh
 CMakeFiles/enigma4.dir/main.cc.o: ../cryptography/include/cryptography.hh
 CMakeFiles/enigma4.dir/main.cc.o: ../cryptography/include/rsa.hh
+CMakeFiles/enigma4.dir/main.cc.o: ../cryptography/include/sha.hh
 CMakeFiles/enigma4.dir/main.cc.o: ../cryptography/include/types.hh
 CMakeFiles/enigma4.dir/main.cc.o: ../app.h
 CMakeFiles/enigma4.dir/main.cc.o: ../main.cc

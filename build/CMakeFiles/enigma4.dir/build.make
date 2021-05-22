@@ -158,7 +158,7 @@ enigma4: CMakeFiles/enigma4.dir/onion_routing.cc.o
 enigma4: CMakeFiles/enigma4.dir/message.cc.o
 enigma4: CMakeFiles/enigma4.dir/util.cc.o
 enigma4: CMakeFiles/enigma4.dir/build.make
-enigma4: ../cryptography/build/libcryptography-dev.so
+enigma4: ../cryptography/build/libcryptography.so
 enigma4: CMakeFiles/enigma4.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/rujas/code_workspace/enigma4/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX executable enigma4"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/enigma4.dir/link.txt --verbose=$(VERBOSE)

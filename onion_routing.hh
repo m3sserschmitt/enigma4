@@ -14,6 +14,8 @@ class OnionRoutingApp : public App
     OnionRoutingApp();
     ~OnionRoutingApp();
 
+    static void *new_thread(void *);
+
 public:
     static OnionRoutingApp &create_app();
     int handle_client(client_t client);

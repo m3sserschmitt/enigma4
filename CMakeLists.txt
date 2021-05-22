@@ -6,13 +6,14 @@ enable_testing()
 
 add_executable(enigma4 main.cc server.cc onion_routing.cc message.cc util.cc)
 
-add_library(cryptography-dev SHARED IMPORTED)
-set_target_properties(cryptography-dev PROPERTIES
-  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/cryptography/build/libcryptography-dev.so"
+add_library(cryptography SHARED IMPORTED)
+set_target_properties(cryptography PROPERTIES
+  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/cryptography/build/libcryptography.so"
   INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/cryptography/include"
 )
 
-target_link_libraries(enigma4 cryptography-dev)
+target_link_libraries(enigma4 cryptography)
+target_link_libraries(enigma4 pthread)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
