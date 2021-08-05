@@ -1,7 +1,8 @@
-#include "app.h"
-
 #ifndef SERVER_H
 #define SERVER_H
+
+#include "app.h"
+#include <netdb.h>
 
 #define MAX_HOST 256
 #define MAX_PORT 8
@@ -9,7 +10,6 @@
 class Server
 {
 private:
-
     char *host;
     char *port;
     addrinfo *addrinf;
@@ -20,14 +20,13 @@ private:
 
     App *app;
 
+public:
+
+    Server();
     Server(const char *host, const char *port, const addrinfo *addr_info, int backlog = 256);
     Server(const Server &s);
+
     ~Server();
-
-    Server &operator=(const Server &s);
-
-public:
-    static Server &create_server(const char *host, const char *port, const addrinfo *addr, int backlog);
 
     void set_host(const char *host);
     void set_unix_socket_addr(const char *addr, size_t hostlen);
@@ -44,7 +43,9 @@ public:
 
     int socket_bind();
     int unix_socket_bind();
-    client_t accept_clients();
+    int accept_clients();
+
+    Server &operator=(const Server &s);
 };
 
 #endif

@@ -6,6 +6,11 @@
 #include <string.h>
 #include <sys/un.h>
 
+Server::Server() : host(new char[MAX_HOST]),
+                   port(new char[MAX_PORT]),
+                   addrinf(new addrinfo),
+                   backlog(backlog) {}
+
 Server::Server(const char *host,
                const char *port,
                const addrinfo *addr_info,
@@ -37,13 +42,6 @@ Server::~Server()
     delete this->host;
     delete this->port;
     delete this->addrinf;
-}
-
-Server &Server::create_server(const char *host, const char *port, const addrinfo *addr, int backlog)
-{
-    static Server server = Server(host, port, addr, backlog);
-
-    return server;
 }
 
 void Server::set_host(const char *host)
@@ -172,24 +170,27 @@ int Server::unix_socket_bind()
     return bind(this->servsock, (sockaddr *)&addr, sizeof(sockaddr_un));
 }
 
-client_t Server::accept_clients()
+int Server::accept_clients()
 {
     listen(this->servsock, this->backlog);
 
-    client_t client;
+    int clientsock;
+    sockaddr peer_addr;
+    socklen_t peer_addrlen;
+
     while (true)
     {
-        client.sock = accept(this->servsock, &client.peer_addr, &client.peer_addrlen);
+        clientsock = accept(this->servsock, &peer_addr, &peer_addrlen);
 
         if (not this->app)
         {
             break;
         }
 
-        this->app->handle_client(client);
+        this->app->handle_client(clientsock);
     }
 
-    return client;
+    return clientsock;
 }
 
 Server &Server::operator=(const Server &s)
