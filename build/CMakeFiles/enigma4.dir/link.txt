@@ -1,1 +1,0 @@
-/usr/bin/c++ -g -rdynamic CMakeFiles/enigma4.dir/main.cc.o CMakeFiles/enigma4.dir/server.cc.o CMakeFiles/enigma4.dir/onion_routing.cc.o CMakeFiles/enigma4.dir/message.cc.o CMakeFiles/enigma4.dir/util.cc.o -o enigma4  -Wl,-rpath,/home/rujas/code_workspace/enigma4/cryptography/build ../cryptography/build/libcryptography.so -lpthread 
