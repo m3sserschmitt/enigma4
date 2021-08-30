@@ -16,9 +16,7 @@ int main()
     addrinf->ai_flags = 0;
     addrinf->ai_protocol = 0;
 
-    Server *server = new Server("192.168.43.165", "8080", addrinf);
-    // Server *local_server = new Server;
-
+    Server *server = new Server("127.0.0.1", "8080", addrinf);
     OnionRoutingApp &app = OnionRoutingApp::get_handle("server_public.pem", "server_private.pem");
 
     server->attach(&app);
@@ -31,12 +29,6 @@ int main()
     }
 
     server->accept_clients();
-
-    // local_server->attach(&app);
-
-    // local_server->set_unix_socket_addr("local_server_sock", 18);
-    // local_server->unix_socket_bind();
-    // local_server->accept_clients();
 
     return EXIT_SUCCESS;
 }

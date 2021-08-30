@@ -8,9 +8,7 @@ typedef struct
     int clientsock;
     AES_CRYPTO aesctx;
     RSA_CRYPTO rsactx;
-
-    // bool skey;
-    // bool pkey;
+    BYTES keydigest;
 
 } connection_t;
 

@@ -2,50 +2,69 @@
 #define CLIENT_HH
 
 #include "message_builder.hh"
+#include "message_parser.hh"
 
 #include <cryptography/aes.hh>
 #include <cryptography/rsa.hh>
 
+#include <map>
 #include <string>
 #include <queue>
 
 class Client
 {
-    static const SIZE max_message_size = 4096;
-    
-    int sock;
+    struct route_t
+    {
+        AES_CRYPTO aesctx;
+        RSA_CRYPTO rsactx;
+        BYTES keydigest;
+        BYTES id;
+        route_t *next;
+    };
 
-    static void *data_listener(void *node);
-    static std::queue<std::string> messages;
-    static pthread_mutex_t mt;
+    struct listener_data
+    {
+        int sock;
+        std::map<std::string, route_t *> *routes;
+        RSA_CRYPTO rsactx;
+        
+    };
+
+    static const SIZE max_message_size = 4096;
+
+    int sock;
+    route_t *serv;
+
+    std::map<std::string, route_t *> routes;
 
     std::string pubkey;
+    std::string hexaddress;
 
-    AES_CRYPTO serv_aesctx;
-    AES_CRYPTO dest_aesctx;
+    RSA_CRYPTO rsactx;
 
-    RSA_CRYPTO serv_rsactx;
-    RSA_CRYPTO dest_rsactx;
+    int init_aes(AES_CRYPTO ctx, const BYTE *key = 0, SIZE keylen = 32);
 
-    int init_aes(AES_CRYPTO ctx);
-    
-    int write_serv(MessageBuilder &mb, bool rsa = false);
-    int write_dest(MessageBuilder &mb, bool rsa = false);
-    
+    int write_serv(MessageBuilder &mb, route_t *route, bool rsa = false);
+    int write_dest(MessageBuilder &mb, route_t *route, bool rsa = false);
+
+    static int decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, route_t *> *routes);
+    static void *data_listener(void *node);
+    int get_base64_dest_key(route_t *route, BASE64 *key) const;
+
 public:
-    Client(std::string pubkey);
+    Client(const std::string &pubkey, const std::string &privkey);
 
-    int setup_server(std::string keyfile);
-    int setup_dest(std::string keyfile);
+    const std::string &get_client_hexaddress() { return this->hexaddress; }
 
-    int get_base64_dest_key(BASE64 *key);
+    int setup_server(const std::string &keyfile);
+    const std::string setup_dest(const std::string &keyfile, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
 
-    int create_connection(std::string host, std::string port);
-    
+    int create_connection(const std::string &host, const std::string &port);
+
     int handshake();
-    int setup_dest_key();
+    int send_dest_key(const std::string &address);
 
-    int write_data(BYTES data, SIZE datalen);
+    int write_data(const BYTE *data, SIZE datalen, const std::string &address);
 };
 
 #endif

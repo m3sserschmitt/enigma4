@@ -18,14 +18,16 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
 {
     this->rsactx = CRYPTO::RSA_CRYPTO_new();
 
-    cout << "[+] pubkey init: " << CRYPTO::RSA_init_key_file(pubkey_file, 0, 0, PUBLIC_KEY, this->rsactx) << "\n";
+    PLAINTEXT key = (PLAINTEXT)read_file(pubkey_file, "rb");
+
+    cout << "[+] pubkey init: " << CRYPTO::RSA_init_key(key, 0, 0, PUBLIC_KEY, this->rsactx) << "\n";
     cout << "[+] privkey init: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx) << "\n";
 
     // cout << "[+] encr init: " << RSA_init_ctx(this->rsactx, ENCRYPT) << "\n";
     cout << "[+] RSA decr init: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT) << "\n";
 
     // this->pubkey = (PLAINTEXT)read_file(pubkey_file, "rb");
-    get_address(this->rsactx, this->address);
+    get_key_hexdigest(key, this->address);
     cout << "[+] current address: " << this->address << "\n";
 }
 
@@ -68,7 +70,6 @@ int OnionRoutingApp::setup_session_key(BASE64 key, AES_CRYPTO ctx)
 
 int OnionRoutingApp::handshake(connection_t *const conn)
 {
-    // const size_t maxread = 4096;
     SIZE currentread = 512;
 
     BYTES rawdata = new BYTE[OnionRoutingApp::max_message_size];
@@ -111,7 +112,6 @@ int OnionRoutingApp::handshake(connection_t *const conn)
                 goto __end;
             }
             currentread = OnionRoutingApp::max_message_size;
-            // keysetup = true;
         }
         else if (mp.key_exists("pubkey"))
         {
@@ -121,7 +121,8 @@ int OnionRoutingApp::handshake(connection_t *const conn)
                 goto __end;
             }
 
-            // pubkeysetup = true;
+            conn->keydigest = 0;
+            get_keydigest(mp["pubkey"], &conn->keydigest);
         }
 
         mp.clear();
@@ -140,25 +141,26 @@ __end:
 
 int OnionRoutingApp::redirect(connection_t *const conn)
 {
-    const SIZE maxread = 4096;
-
+    const SIZE maxread = OnionRoutingApp::max_message_size;
+    
     BYTES rawdata = new BYTE[maxread];
-    ssize_t datalen;
+    ssize_t rawdatalen;
 
-    BYTES decr = new BYTE[4096];
-    SIZE decrlen;
-    PLAINTEXT address = 0;
+    MessageParser mp;
+    map<string, connection_t *>::iterator next;
 
-    // MessageParser message;
-
-    while ((datalen = read(conn->clientsock, rawdata, maxread)) > 0)
+    while ((rawdatalen = read(conn->clientsock, rawdata, maxread)) > 0)
     {
-        // cout << CRYPTO::hex(decr, 32, &address);
+        mp.update(rawdata, rawdatalen);
+        mp.decrypt(conn->aesctx);
+        mp.remove_next();
 
-        // if ((decrlen = message.update(rawdata, datalen, conn->aesctx)) < 0)
-        // {
-        // continue;
-        // }
+        cout << "[+] Data received\n"; 
+        if((next = OnionRoutingApp::clients.find(mp["next"])) != OnionRoutingApp::clients.end())
+        {
+            cout << "[+] Forwarding to " << mp["next"] << "\n";
+            write(next->second->clientsock, mp.get_data(), mp.get_datalen());
+        }
     }
 
     return 0;
@@ -167,17 +169,7 @@ int OnionRoutingApp::redirect(connection_t *const conn)
 void *OnionRoutingApp::new_thread(void *args)
 {
     connection_t *connection = ((connection_t *)args);
-
-    const SIZE maxread = 4096;
-
-    BYTES rawdata = new BYTE[maxread];
-    ssize_t datalen;
-
-    BYTES decr = new BYTE[maxread];
-    SIZE decrlen;
-
-    string clientaddr;
-    MessageParser message;
+    PLAINTEXT clientaddr = 0;
 
     if (not connection)
     {
@@ -189,11 +181,7 @@ void *OnionRoutingApp::new_thread(void *args)
         goto __end;
     }
 
-    // convert public key PEM format to raw bytes;
-    if (get_address(connection->rsactx, clientaddr) < 0)
-    {
-        goto __end;
-    }
+    CRYPTO::hex(connection->keydigest, 32, &clientaddr);
 
     cout << "\n[+] Session established: " << clientaddr << "\n";
     OnionRoutingApp::clients.insert(pair<string, connection_t *>(clientaddr, connection));
@@ -209,10 +197,9 @@ __end:
     CRYPTO::RSA_CRYPTO_free(connection->rsactx);
     CRYPTO::AES_CRYPTO_free(connection->aesctx);
 
-    delete connection;
+    delete[] clientaddr;
 
-    delete rawdata;
-    delete decr;
+    delete connection;
 
     return 0;
 }

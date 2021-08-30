@@ -13,10 +13,15 @@ class MessageParser
     BYTES rawdata;
     SIZE datalen;
 
-    // BYTES next_addr;
-
     std::map<std::string, std::string> data;
-    
+
+    void shift_left(SIZE len)
+    {
+        this->datalen -= len;
+        memcpy(this->rawdata, this->rawdata + len, this->datalen);
+        memset(this->rawdata + this->datalen, 0, len);
+    }
+
 public:
     MessageParser() : rawdata(new BYTE[this->max_message_size]), datalen(0){};
 
@@ -26,6 +31,9 @@ public:
     void update(const BYTE *data, SIZE datalen);
     int decrypt(AES_CRYPTO ctx);
     int decrypt(RSA_CRYPTO ctx);
+
+    void remove_next();
+    void remove_id();
 
     void parse();
     bool key_exists(const std::string &key) const
@@ -38,6 +46,14 @@ public:
         memset(this->rawdata, 0, this->max_message_size);
         datalen = 0;
     };
+
+    const BYTE *get_data(SIZE &datalen) const
+    {
+        datalen = this->datalen;
+        return this->rawdata;
+    };
+    const BYTE *get_data() const { return this->rawdata; }
+    SIZE get_datalen() const { return this->datalen; };
 
     MessageParser &operator=(const MessageParser &mp);
     std::string &operator[](const std::string &key);

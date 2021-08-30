@@ -11,6 +11,7 @@
 #include "util.hh"
 #include "types.hh"
 #include "message_builder.hh"
+#include "message_parser.hh"
 
 #include <cryptography/random.hh>
 #include <cryptography/base64.hh>
@@ -18,44 +19,78 @@
 
 using namespace std;
 
-pthread_mutex_t Client::mt;
-queue<string> Client::messages;
+// pthread_mutex_t Client::mt;
+// queue<string> Client::messages;
 
-Client::Client(string pubkey)
+Client::Client(const string &pubkey, const string &privkey)
 {
     this->pubkey = (PLAINTEXT)read_file(pubkey, "rb");
+    this->serv = new route_t;
     this->sock = -1;
 
-    pthread_mutex_init(&this->mt, 0);
+    get_key_hexdigest(this->pubkey, this->hexaddress);
+
+    this->rsactx = CRYPTO::RSA_CRYPTO_new();
+    CRYPTO::RSA_init_key_file(privkey, 0, 0, PRIVATE_KEY, this->rsactx);
+    CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT);
+
+    // pthread_mutex_init(&this->mt, 0);
 }
 
-void *Client::data_listener(void *args)
+int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<string, route_t *> *routes)
 {
-    connection_t *conn = (connection_t *)args;
+    mp.remove_id();
+    route_t *route = (*routes)[mp["id"]];
 
-    // const SIZE maxread = 4096;
-    BYTES rawdata = new BYTE[Client::max_message_size];
-    ssize_t recvlen;
-
-    cout << "[+] Reading data...\n";
-
-    while ((recvlen = read(conn->clientsock, rawdata, Client::max_message_size)) > 0)
+    // try RSA decryption;
+    if (not route)
     {
-        pthread_mutex_lock(&Client::mt);
+        if (mp.decrypt(rsactx) < 0)
+        {
+            return -1;
+        }
+    }
+    else
 
-        CRYPTO::AES_setup_iv(rawdata, 16, conn->aesctx);
-
-        rawdata += 16;
-
-        rawdata -= 16;
-
-        pthread_mutex_unlock(&Client::mt);
+    if (not route or mp.decrypt(route->aesctx) < 0)
+    {
+        return -1;
     }
 
     return 0;
 }
 
-int Client::create_connection(string host, string port)
+void *Client::data_listener(void *args)
+{
+    listener_data *listener = (listener_data *)args;
+
+    int sock = listener->sock;
+    map<string, route_t *> *routes = listener->routes;
+    RSA_CRYPTO rsactx = listener->rsactx;
+
+    BYTES rawdata = new BYTE[Client::max_message_size];
+    ssize_t recvlen;
+
+    MessageParser mp;
+
+    while ((recvlen = read(sock, rawdata, Client::max_message_size)) > 0)
+    {
+        cout << "\n[+] Data received: " << recvlen << " bytes.\n";
+        mp.update(rawdata, recvlen);
+
+        if(Client::decrypt_incoming_message(mp, rsactx, routes) < 0)
+        {
+            continue;
+        }
+
+        cout << "\nMessage: " << mp.get_data() << "\n";
+        
+    }
+
+    return 0;
+}
+
+int Client::create_connection(const string &host, const string &port)
 {
     struct sockaddr_in sock_addr;
 
@@ -70,162 +105,215 @@ int Client::create_connection(string host, string port)
         return -1;
     }
 
-    // connection_t *conn = new connection_t;
+    listener_data *listener = new listener_data;
+    listener->routes = &this->routes;
+    listener->sock = this->sock;
+    listener->rsactx = this->rsactx;
 
-    // conn->aesctx = this->dest_aesctx;
-    // conn->rsactx = this->dest_rsactx;
-
-    // pthread_t new_thread;
-    // pthread_create(&new_thread, 0, this->data_listener, (void *)conn);
+    pthread_t new_thread;
+    pthread_create(&new_thread, 0, this->data_listener, listener);
 
     return 0;
 }
 
-int Client::init_aes(AES_CRYPTO ctx)
+int Client::init_aes(AES_CRYPTO ctx, const BYTE *key, SIZE keylen)
 {
-    BYTES key = 0;
-    BYTES salt = 0;
+    BYTES _key = 0;
+    BYTES _salt = 0;
 
     int ret = 0;
 
-    if (CRYPTO::rand_bytes(32, &key) < 0)
+    if (CRYPTO::rand_bytes(32, &_key) < 0)
     {
         ret = -1;
         goto __end;
     }
 
-    if (CRYPTO::rand_bytes(8, &salt) < 0)
+    if (CRYPTO::rand_bytes(8, &_salt) < 0)
     {
         ret = -1;
         goto __end;
     }
 
-    if (CRYPTO::AES_init(key, 32, salt, 10000, ctx) < 0)
+    if (CRYPTO::AES_init(_key, 32, _salt, 10000, ctx) < 0)
     {
         ret = -1;
+    }
+
+    if (key and keylen)
+    {
+        CRYPTO::AES_setup_key(key, keylen, ctx);
     }
 
 __end:
-    delete[] key;
-    delete[] salt;
+    delete[] _key;
+    delete[] _salt;
 
     return ret;
 }
 
-int Client::setup_server(std::string keyfile)
+int Client::setup_server(const std::string &keyfile)
 {
-    this->serv_aesctx = CRYPTO::AES_CRYPTO_new();
-    this->serv_rsactx = CRYPTO::RSA_CRYPTO_new();
+    this->serv->aesctx = CRYPTO::AES_CRYPTO_new();
+    this->serv->rsactx = CRYPTO::RSA_CRYPTO_new();
 
-    if (CRYPTO::RSA_init_key_file(keyfile, 0, 0, PUBLIC_KEY, this->serv_rsactx) < 0)
+    PLAINTEXT key = (PLAINTEXT)read_file(keyfile, "rb");
+
+    if (not key)
     {
         return -1;
     }
 
-    if (CRYPTO::RSA_init_ctx(this->serv_rsactx, ENCRYPT) < 0)
+    if (CRYPTO::RSA_init_key(key, 0, 0, PUBLIC_KEY, this->serv->rsactx) < 0)
     {
         return -1;
     }
 
-    if (this->init_aes(this->serv_aesctx) < 0)
+    if (CRYPTO::RSA_init_ctx(this->serv->rsactx, ENCRYPT) < 0)
     {
         return -1;
     }
+
+    if (this->init_aes(this->serv->aesctx) < 0)
+    {
+        return -1;
+    }
+
+    this->serv->keydigest = 0;
+    get_keydigest(key, &this->serv->keydigest);
+
+    route_t *dummy_next = new route_t;
+    this->serv->next = dummy_next;
 
     return 0;
 }
 
-int Client::setup_dest(string keyfile)
+const string Client::setup_dest(const string &keyfile, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
 {
-    this->dest_aesctx = CRYPTO::AES_CRYPTO_new();
-    this->dest_rsactx = CRYPTO::RSA_CRYPTO_new();
+    AES_CRYPTO dest_aesctx = CRYPTO::AES_CRYPTO_new();
+    RSA_CRYPTO dest_rsactx = CRYPTO::RSA_CRYPTO_new();
 
-    if (CRYPTO::AES_ctx_dup(this->dest_aesctx, this->serv_aesctx) < 0)
+    if (CRYPTO::AES_ctx_dup(dest_aesctx, this->serv->aesctx) < 0)
     {
-        return -1;
+        return "";
     }
 
-    if (CRYPTO::RSA_init_key_file(keyfile, 0, 0, PUBLIC_KEY, this->dest_rsactx) < 0)
+    PLAINTEXT pubkey = (PLAINTEXT)read_file(keyfile, "rb");
+
+    if (not pubkey)
     {
-        return -1;
+        return "";
     }
 
-    if (CRYPTO::RSA_init_ctx(this->dest_rsactx, ENCRYPT) < 0)
+    if (CRYPTO::RSA_init_key(pubkey, 0, 0, PUBLIC_KEY, dest_rsactx) < 0)
     {
-        return -1;
+        return "";
     }
 
-    if (this->init_aes(this->dest_aesctx) < 0)
+    if (CRYPTO::RSA_init_ctx(dest_rsactx, ENCRYPT) < 0)
     {
-        return -1;
+        return "";
     }
 
-    return 0;
+    if (this->init_aes(dest_aesctx, key, keylen) < 0)
+    {
+        return "";
+    }
+
+    route_t *route = new route_t;
+    route->aesctx = dest_aesctx;
+    route->rsactx = dest_rsactx;
+    route->next = 0;
+
+    route->keydigest = 0;
+    get_keydigest(pubkey, &route->keydigest);
+
+    PLAINTEXT hexaddr = 0;
+    CRYPTO::hex(route->keydigest, 32, &hexaddr);
+    this->routes[hexaddr] = route;
+
+    BASE64 session_id = 0;
+    if (id)
+    {
+        route->id = new BYTE[16 + 1];
+        memcpy(route->id, id, 16);
+    }
+    else
+    {
+        CRYPTO::rand_bytes(16, &route->id);
+    }
+
+    CRYPTO::base64_encode(route->id, 16, &session_id);
+    this->routes[session_id] = route;
+
+    string address = hexaddr;
+    delete[] hexaddr;
+
+    return address;
 }
 
-int Client::get_base64_dest_key(BASE64 *key)
+int Client::get_base64_dest_key(route_t *route, BASE64 *key) const
 {
     BYTES rawkey = 0;
     int ret = 0;
 
-    if (CRYPTO::AES_read_key(this->serv_aesctx, 32, &rawkey) < 0)
+    if (CRYPTO::AES_read_key(route->aesctx, 32, &rawkey) < 0)
     {
-        ret = -1;
-        goto __end;
+        delete[] rawkey;
+        return -1;
     }
 
     if (CRYPTO::base64_encode(rawkey, 32, key) < 0)
     {
-        ret = -1;
-        goto __end;
+        delete[] rawkey;
+        return -1;
     }
 
-__end:
-
-    delete[] rawkey;
-    return ret;
+    return 0;
 }
 
-int Client::write_serv(MessageBuilder &mb, bool rsa)
+int Client::write_serv(MessageBuilder &mb, route_t *route, bool rsa)
 {
-    if (rsa and mb.encrypt(this->serv_rsactx) < 0)
+    if (rsa and mb.encrypt(this->serv->rsactx) < 0)
     {
         return -1;
     }
     else if (not rsa)
     {
-        mb.set_dest_address(this->dest_rsactx);
+        // if (not route->next)
+        // {
+        mb.set_id(route->id);
+        // }
+        mb.set_next(route->keydigest);
 
-        if (mb.encrypt(this->serv_aesctx) < 0)
+        if (mb.encrypt(this->serv->aesctx) < 0)
         {
             return -1;
         }
     }
 
-    SIZE outlen;
-    const BYTE *data = mb.get_data(outlen);
-
-    return write(this->sock, data, outlen);
+    return write(this->sock, mb.get_data(), mb.get_datalen());
 }
 
-int Client::write_dest(MessageBuilder &mb, bool rsa)
+int Client::write_dest(MessageBuilder &mb, route_t *route, bool rsa)
 {
-    if (rsa and mb.encrypt(this->dest_rsactx) < 0)
+    if (rsa and mb.encrypt(route->rsactx) < 0)
     {
         return -1;
     }
-    else if (mb.encrypt(this->dest_aesctx) < 0)
+    else if (not rsa and mb.encrypt(route->aesctx) < 0)
     {
         return -1;
     }
 
-    return this->write_serv(mb);
+    return this->write_serv(mb, route);
 }
 
 int Client::handshake()
 {
     BASE64 enckey = new CHAR[64 + 1];
-    if (this->get_base64_dest_key(&enckey) < 0)
+
+    if (this->get_base64_dest_key(this->serv, &enckey) < 0)
     {
         delete enckey;
         return -1;
@@ -234,30 +322,39 @@ int Client::handshake()
     MessageBuilder mb("pass: " + string(enckey));
     delete enckey;
 
-    if (this->write_serv(mb, 1) < 0)
+    if (this->write_serv(mb, this->serv, 1) < 0)
     {
         return -1;
     }
 
     mb.update("pubkey: " + this->pubkey);
 
-    return this->write_serv(mb);
+    return this->write_serv(mb, this->serv);
 }
 
-int Client::setup_dest_key()
+int Client::send_dest_key(const string &address)
 {
-    // BASE64 key = 0;
-    // this->get_base64_dest_key(&key);
+    BASE64 key = 0;
+    route_t *route = this->routes[address];
 
-    // string message = "pass: " + string(key);
+    this->get_base64_dest_key(route, &key);
 
-    // return this->write_dest((BYTES)message.c_str(), message.size(), 1);
-    return 0;
+    MessageBuilder mb("pass: " + string(key));
+    mb.enable_next(1);
+
+    return this->write_dest(mb, route, 1);
 }
 
-int Client::write_data(BYTES data, SIZE datalen)
+int Client::write_data(const BYTE *data, SIZE datalen, const string &address)
 {
     MessageBuilder mb(data, datalen);
+    route_t *route = this->routes[address];
+    mb.enable_next(1);
 
-    return this->write_dest(mb);
+    if (not route)
+    {
+        return -1;
+    }
+
+    return this->write_dest(mb, route);
 }

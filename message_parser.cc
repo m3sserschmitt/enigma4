@@ -8,10 +8,9 @@ using namespace std;
 MessageParser::MessageParser(const MessageParser &mp) : data(mp.data), datalen(mp.datalen)
 {
     this->rawdata = new BYTE[this->max_message_size];
-    // this->next_addr = new BYTE[32];
 
+    memset(this->rawdata, 0, this->max_message_size);
     memcpy(this->rawdata, mp.rawdata, mp.datalen);
-    // memcpy(this->next_addr, mp.next_addr, 32);
 }
 
 void MessageParser::parse()
@@ -42,10 +41,6 @@ void MessageParser::parse()
         data = data.substr(n + 2);
 
     } while (n != string::npos);
-
-    // line.clear();
-    // key.clear();
-    // value.clear();
 }
 
 void MessageParser::update(const BYTE *data, SIZE datalen)
@@ -71,12 +66,14 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
     }
 
     // update with decrypted data and get next address;
-    PLAINTEXT addr = 0;
-    CRYPTO::hex(out, 32, &addr);
-    this->data.insert(pair<string, string>("next", addr));
-    delete[] addr;
+    // PLAINTEXT addr = 0;
+    // CRYPTO::hex(out, 32, &addr);
+    // this->data.insert(pair<string, string>("next", addr));
+    // delete[] addr;
 
-    this->update(out + 32, outlen - 32);
+    // this->update(out + 32, outlen - 32);
+
+    this->update(out, outlen);
 
     delete[] out;
     return outlen;
@@ -93,10 +90,31 @@ int MessageParser::decrypt(RSA_CRYPTO ctx)
         return -1;
     }
 
-    // memcpy(this->next_addr, out, 32);
     this->update(out, outlen);
 
     return outlen;
+}
+
+void MessageParser::remove_next()
+{
+    PLAINTEXT next = 0;
+    CRYPTO::hex(this->rawdata, 32, &next);
+
+    this->data["next"] = next;
+    delete[] next;
+
+    shift_left(32);
+}
+
+void MessageParser::remove_id()
+{
+    BASE64 id = 0;
+    CRYPTO::base64_encode(this->rawdata, 16, &id);
+
+    this->data["id"] = id;
+    delete[] id;
+
+    shift_left(16);
 }
 
 MessageParser &MessageParser::operator=(const MessageParser &mp)
@@ -110,6 +128,7 @@ MessageParser &MessageParser::operator=(const MessageParser &mp)
         if (this->rawdata)
         {
             delete this->rawdata;
+            this->rawdata = 0;
 
             this->rawdata = new BYTE[this->max_message_size];
             memcpy(this->rawdata, mp.rawdata, mp.datalen);
