@@ -70,7 +70,7 @@ int OnionRoutingApp::setup_session_key(BASE64 key, AES_CRYPTO ctx)
 
 int OnionRoutingApp::handshake(connection_t *const conn)
 {
-    SIZE currentread = 512;
+    SIZE currentread = 1024;
 
     BYTES rawdata = new BYTE[OnionRoutingApp::max_message_size];
     ssize_t datalen;
@@ -79,10 +79,13 @@ int OnionRoutingApp::handshake(connection_t *const conn)
 
     int ret = 0;
 
-    // first, a 512 bytes message is expected;
-    while ((datalen = read(conn->clientsock, rawdata, currentread)) > 0)
+    CRYPTO::AES_iv_append(1, conn->aesctx);
+    CRYPTO::AES_iv_autoset(1, conn->aesctx);
+
+    // while ((datalen = read(conn->clientsock, rawdata, currentread)) > 0)
+    while(conn->sock->read_data(mp) > 0)
     {
-        mp.update(rawdata, datalen);
+        // mp.update(rawdata, datalen);
 
         // if key not available, try RSA decryption;
         if (not CRYPTO::AES_decrypt_ready(conn->aesctx))
@@ -149,9 +152,10 @@ int OnionRoutingApp::redirect(connection_t *const conn)
     MessageParser mp;
     map<string, connection_t *>::iterator next;
 
-    while ((rawdatalen = read(conn->clientsock, rawdata, maxread)) > 0)
+    // while ((rawdatalen = read(conn->clientsock, rawdata, maxread)) > 0)
+    while(conn->sock->read_data(mp) > 0)
     {
-        mp.update(rawdata, rawdatalen);
+        // mp.update(rawdata, rawdatalen);
         mp.decrypt(conn->aesctx);
         mp.remove_next();
 
@@ -159,7 +163,8 @@ int OnionRoutingApp::redirect(connection_t *const conn)
         if((next = OnionRoutingApp::clients.find(mp["next"])) != OnionRoutingApp::clients.end())
         {
             cout << "[+] Forwarding to " << mp["next"] << "\n";
-            write(next->second->clientsock, mp.get_data(), mp.get_datalen());
+            next->second->sock->write_data(mp.get_data(), mp.get_datalen());
+            // write(next->second->clientsock, mp.get_data(), mp.get_datalen());
         }
     }
 
@@ -192,7 +197,7 @@ void *OnionRoutingApp::new_thread(void *args)
     cout << "[+] " << clientaddr << " disconnected\n";
 
 __end:
-    close(connection->clientsock);
+    // close(connection->clientsock);
 
     CRYPTO::RSA_CRYPTO_free(connection->rsactx);
     CRYPTO::AES_CRYPTO_free(connection->aesctx);
@@ -210,7 +215,7 @@ int OnionRoutingApp::handle_client(int clientsock)
 
     connection_t *connection = new connection_t;
 
-    connection->clientsock = clientsock;
+    connection->sock = new OSocket(clientsock);
 
     connection->aesctx = CRYPTO::AES_CRYPTO_new();
     connection->rsactx = CRYPTO::RSA_CRYPTO_new();

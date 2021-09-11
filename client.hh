@@ -30,8 +30,6 @@ class Client
         
     };
 
-    static const SIZE max_message_size = 4096;
-
     int sock;
     route_t *serv;
 
@@ -44,17 +42,18 @@ class Client
 
     int init_aes(AES_CRYPTO ctx, const BYTE *key = 0, SIZE keylen = 32);
 
-    int write_serv(MessageBuilder &mb, route_t *route, bool rsa = false);
+    int write_serv(MessageBuilder &mb, bool rsa = false);
     int write_dest(MessageBuilder &mb, route_t *route, bool rsa = false);
 
     static int decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, route_t *> *routes);
     static void *data_listener(void *node);
-    int get_base64_dest_key(route_t *route, BASE64 *key) const;
+    
+    int read_base64_key(route_t *route, BASE64 *key) const;
 
 public:
     Client(const std::string &pubkey, const std::string &privkey);
 
-    const std::string &get_client_hexaddress() { return this->hexaddress; }
+    const std::string &get_client_hexaddress() const { return this->hexaddress; }
 
     int setup_server(const std::string &keyfile);
     const std::string setup_dest(const std::string &keyfile, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);

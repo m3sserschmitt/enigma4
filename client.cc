@@ -17,6 +17,8 @@
 #include <cryptography/base64.hh>
 #include <iostream>
 
+#include "message_const.hh"
+
 using namespace std;
 
 // pthread_mutex_t Client::mt;
@@ -52,7 +54,7 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
     }
     else
 
-    if (not route or mp.decrypt(route->aesctx) < 0)
+        if (not route or mp.decrypt(route->aesctx) < 0)
     {
         return -1;
     }
@@ -68,23 +70,22 @@ void *Client::data_listener(void *args)
     map<string, route_t *> *routes = listener->routes;
     RSA_CRYPTO rsactx = listener->rsactx;
 
-    BYTES rawdata = new BYTE[Client::max_message_size];
+    BYTES rawdata = new BYTE[MESSAGE_MAX_SIZE];
     ssize_t recvlen;
 
     MessageParser mp;
 
-    while ((recvlen = read(sock, rawdata, Client::max_message_size)) > 0)
+    while ((recvlen = read(sock, rawdata, MESSAGE_MAX_SIZE)) > 0)
     {
         cout << "\n[+] Data received: " << recvlen << " bytes.\n";
         mp.update(rawdata, recvlen);
 
-        if(Client::decrypt_incoming_message(mp, rsactx, routes) < 0)
+        if (Client::decrypt_incoming_message(mp, rsactx, routes) < 0)
         {
             continue;
         }
 
         cout << "\nMessage: " << mp.get_data() << "\n";
-        
     }
 
     return 0;
@@ -118,38 +119,43 @@ int Client::create_connection(const string &host, const string &port)
 
 int Client::init_aes(AES_CRYPTO ctx, const BYTE *key, SIZE keylen)
 {
-    BYTES _key = 0;
-    BYTES _salt = 0;
-
-    int ret = 0;
-
-    if (CRYPTO::rand_bytes(32, &_key) < 0)
-    {
-        ret = -1;
-        goto __end;
-    }
-
-    if (CRYPTO::rand_bytes(8, &_salt) < 0)
-    {
-        ret = -1;
-        goto __end;
-    }
-
-    if (CRYPTO::AES_init(_key, 32, _salt, 10000, ctx) < 0)
-    {
-        ret = -1;
-    }
+    CRYPTO::AES_iv_append(1, ctx);
+    CRYPTO::AES_iv_autoset(1, ctx);
 
     if (key and keylen)
     {
-        CRYPTO::AES_setup_key(key, keylen, ctx);
+        return CRYPTO::AES_setup_key(key, keylen, ctx);
     }
+    else
+    {
+        BYTES _key = 0;
+        BYTES _salt = 0;
+        int ret = 0;
 
-__end:
-    delete[] _key;
-    delete[] _salt;
+        if (CRYPTO::rand_bytes(32, &_key) < 0)
+        {
+            ret = -1;
+            goto __end;
+        }
 
-    return ret;
+        if (CRYPTO::rand_bytes(32, &_salt) < 0)
+        {
+            ret = -1;
+            goto __end;
+        }
+
+        if (CRYPTO::AES_init(_key, 32, _salt, 100000, ctx) < 0)
+        {
+            ret = -1;
+            goto __end;
+        }
+
+    __end:
+        delete[] _key;
+        delete[] _salt;
+
+        return ret;
+    }
 }
 
 int Client::setup_server(const std::string &keyfile)
@@ -179,11 +185,9 @@ int Client::setup_server(const std::string &keyfile)
         return -1;
     }
 
+    this->serv->next = 0;
     this->serv->keydigest = 0;
     get_keydigest(key, &this->serv->keydigest);
-
-    route_t *dummy_next = new route_t;
-    this->serv->next = dummy_next;
 
     return 0;
 }
@@ -252,7 +256,7 @@ const string Client::setup_dest(const string &keyfile, const BYTE *key, const BY
     return address;
 }
 
-int Client::get_base64_dest_key(route_t *route, BASE64 *key) const
+int Client::read_base64_key(route_t *route, BASE64 *key) const
 {
     BYTES rawkey = 0;
     int ret = 0;
@@ -272,24 +276,15 @@ int Client::get_base64_dest_key(route_t *route, BASE64 *key) const
     return 0;
 }
 
-int Client::write_serv(MessageBuilder &mb, route_t *route, bool rsa)
+int Client::write_serv(MessageBuilder &mb, bool rsa)
 {
     if (rsa and mb.encrypt(this->serv->rsactx) < 0)
     {
         return -1;
     }
-    else if (not rsa)
+    else if (not rsa and mb.encrypt(this->serv->aesctx) < 0)
     {
-        // if (not route->next)
-        // {
-        mb.set_id(route->id);
-        // }
-        mb.set_next(route->keydigest);
-
-        if (mb.encrypt(this->serv->aesctx) < 0)
-        {
-            return -1;
-        }
+        return -1;
     }
 
     return write(this->sock, mb.get_data(), mb.get_datalen());
@@ -306,6 +301,15 @@ int Client::write_dest(MessageBuilder &mb, route_t *route, bool rsa)
         return -1;
     }
 
+    mb.set_id(route->id);
+    mb.set_next(route->keydigest);
+
+    if (route->next)
+    {
+        route = route->next;
+        return this->write_dest(mb, route);
+    }
+
     return this->write_serv(mb, route);
 }
 
@@ -313,7 +317,7 @@ int Client::handshake()
 {
     BASE64 enckey = new CHAR[64 + 1];
 
-    if (this->get_base64_dest_key(this->serv, &enckey) < 0)
+    if (this->read_base64_key(this->serv, &enckey) < 0)
     {
         delete enckey;
         return -1;
@@ -322,12 +326,12 @@ int Client::handshake()
     MessageBuilder mb("pass: " + string(enckey));
     delete enckey;
 
-    if (this->write_serv(mb, this->serv, 1) < 0)
+    if (this->write_serv(mb, 1) < 0)
     {
         return -1;
     }
 
-    mb.update("pubkey: " + this->pubkey);
+    mb.set_payload("pubkey: " + this->pubkey);
 
     return this->write_serv(mb, this->serv);
 }
@@ -337,10 +341,10 @@ int Client::send_dest_key(const string &address)
     BASE64 key = 0;
     route_t *route = this->routes[address];
 
-    this->get_base64_dest_key(route, &key);
+    this->read_base64_key(route, &key);
 
     MessageBuilder mb("pass: " + string(key));
-    mb.enable_next(1);
+    // mb.enable_next(1);
 
     return this->write_dest(mb, route, 1);
 }
@@ -349,7 +353,7 @@ int Client::write_data(const BYTE *data, SIZE datalen, const string &address)
 {
     MessageBuilder mb(data, datalen);
     route_t *route = this->routes[address];
-    mb.enable_next(1);
+    // mb.enable_next(1);
 
     if (not route)
     {

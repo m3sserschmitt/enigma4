@@ -5,65 +5,47 @@
 #include <string.h>
 #include <cryptography/cryptography.hh>
 
-class MessageBuilder
-{
-    static const SIZE message_max_size = 4096;
-    BYTES data;
-    SIZE datalen;
-    bool next_required;
+#include "message.hh"
 
-    int set_iv(AES_CRYPTO ctx);
+class MessageBuilder : public Message
+{
+    void append_payload_beg(const BYTE *data, SIZE datalen)
+    {
+        BYTES payload = this->get_payload_ptr();
+        SIZE payload_size = this->get_payload_size();
+
+        memcpy(payload + datalen, payload, payload_size);
+        memcpy(payload, data, datalen);
+
+        this->set_payload_size(payload_size + datalen);
+    }
 
 public:
-    MessageBuilder() : data(new BYTE[this->message_max_size]), datalen(0), next_required(0){};
-    MessageBuilder(const CHAR *data);
-    MessageBuilder(const std::string &data);
-    MessageBuilder(const BYTE *data, SIZE datalen);
-    MessageBuilder(const MessageBuilder &mb);
+    MessageBuilder() : Message(){};
+    MessageBuilder(const CHAR *data) : Message(data) {}
+    MessageBuilder(const std::string &data) : Message(data) {}
+    MessageBuilder(const BYTE *data, SIZE datalen) : Message(data, datalen) {}
+    MessageBuilder(const MessageBuilder &mb) : Message(mb) {}
 
-    ~MessageBuilder() { delete[] data; };
+    ~MessageBuilder(){};
 
-    void update(const CHAR *data);
-    void update(const std::string &data);
-    void update(const BYTE *data, SIZE datalen);
-
-    void append_data(const BYTE *data, SIZE datalen)
-    {
-        memcpy(this->data + datalen, this->data, this->datalen);
-        memcpy(this->data, data, datalen);
-
-        this->datalen += datalen;
-    }
-
-    void enable_next(bool enable)
-    {
-        next_required = enable;
-    }
     void set_next(const BYTE *address)
     {
-        if (address and this->next_required)
+        if (address)
         {
-            this->append_data(address, 32);
+            this->append_payload_beg(address, MESSAGE_ADDRESS_SIZE);
         }
     }
     void set_id(const BYTE *id)
     {
         if (id)
         {
-            this->append_data(id, 16);
+            this->append_payload_beg(id, MESSAGE_ID_SIZE);
         }
     }
 
     int encrypt(AES_CRYPTO ctx);
     int encrypt(RSA_CRYPTO ctx);
-
-    const BYTE *get_data(SIZE &datalen) const
-    {
-        datalen = this->datalen;
-        return this->data;
-    }
-    const BYTE *get_data() const { return this->data; };
-    SIZE get_datalen() const { return this->datalen; };
 
     MessageBuilder &operator=(const MessageBuilder &mb);
 };

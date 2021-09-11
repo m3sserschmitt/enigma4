@@ -6,29 +6,55 @@
 #include <string.h>
 #include <cryptography/types.hh>
 
-class MessageParser
+#include "message.hh"
+
+class MessageParser : public Message
 {
-    static const SIZE max_message_size = 4096;
-
-    BYTES rawdata;
-    SIZE datalen;
-
-    std::map<std::string, std::string> data;
-
-    void shift_left(SIZE len)
+    std::map<std::string, std::string> parseddata;
+    
+    void remove_payload_beg(SIZE len)
     {
-        this->datalen -= len;
-        memcpy(this->rawdata, this->rawdata + len, this->datalen);
-        memset(this->rawdata + this->datalen, 0, len);
+        BYTES payload = this->get_payload_ptr();
+        SIZE payload_size = this->get_payload_size();
+
+        memcpy(payload, payload + len, payload_size);
+        payload_size -= len;
+        memset(payload + payload_size, 0, len);    
     }
 
 public:
-    MessageParser() : rawdata(new BYTE[this->max_message_size]), datalen(0){};
+    MessageParser() : Message(){};
+    MessageParser(const CHAR *data) : Message(data) {}
+    MessageParser(const BYTE *data, SIZE datalen) : Message(data, datalen) {}
+    MessageParser(const std::string &data) : Message(data) {}
+    MessageParser(const MessageParser &mp) : Message(mp), parseddata(mp.parseddata){};
+    ~MessageParser(){};
 
-    MessageParser(const MessageParser &mp);
-    ~MessageParser() { delete this->rawdata; };
+    void update(const BYTE *data, SIZE datalen)
+    {
+        Message::update(data, datalen);
+    }
 
-    void update(const BYTE *data, SIZE datalen);
+    void append_payload(const BYTE *data, SIZE datalen)
+    {
+        SIZE payload_size = this->get_payload_size();
+        memcpy(this->get_payload_ptr() + payload_size, data, datalen);
+        this->set_payload_size(payload_size + datalen);
+    }
+    SIZE get_payload_size() const
+    {
+        BYTES payload_size_ptr = this->get_payload_size_ptr();
+        SIZE payload_size = *payload_size_ptr;
+        payload_size <<= 8;
+        payload_size |= *(payload_size_ptr + 1);
+
+        return payload_size;
+    }
+    SIZE get_actual_payload_size() const
+    {
+        return Message::get_payload_size();
+    }
+
     int decrypt(AES_CRYPTO ctx);
     int decrypt(RSA_CRYPTO ctx);
 
@@ -38,22 +64,13 @@ public:
     void parse();
     bool key_exists(const std::string &key) const
     {
-        return this->data.find(key) != this->data.end();
+        return this->parseddata.find(key) != this->parseddata.end();
     };
     void clear()
     {
-        this->data.clear();
-        memset(this->rawdata, 0, this->max_message_size);
-        datalen = 0;
+        this->parseddata.clear();
+        Message::clear();
     };
-
-    const BYTE *get_data(SIZE &datalen) const
-    {
-        datalen = this->datalen;
-        return this->rawdata;
-    };
-    const BYTE *get_data() const { return this->rawdata; }
-    SIZE get_datalen() const { return this->datalen; };
 
     MessageParser &operator=(const MessageParser &mp);
     std::string &operator[](const std::string &key);

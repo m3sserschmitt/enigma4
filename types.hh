@@ -2,10 +2,12 @@
 #define _TYPES_HH
 
 #include <cryptography/types.hh>
+#include "osocket.hh"
 
 typedef struct
 {
-    int clientsock;
+    // int clientsock;
+    OSocket *sock;
     AES_CRYPTO aesctx;
     RSA_CRYPTO rsactx;
     BYTES keydigest;

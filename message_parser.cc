@@ -5,17 +5,9 @@
 
 using namespace std;
 
-MessageParser::MessageParser(const MessageParser &mp) : data(mp.data), datalen(mp.datalen)
-{
-    this->rawdata = new BYTE[this->max_message_size];
-
-    memset(this->rawdata, 0, this->max_message_size);
-    memcpy(this->rawdata, mp.rawdata, mp.datalen);
-}
-
 void MessageParser::parse()
 {
-    string data = (PLAINTEXT)this->rawdata;
+    string data = (PLAINTEXT)this->get_payload();
 
     size_t p, n;
 
@@ -35,7 +27,7 @@ void MessageParser::parse()
             key = strip(to_lowercase(line.substr(0, p)), ' ');
             value = strip(line.substr(p + 1), ' ');
 
-            this->data[key] = value;
+            this->parseddata[key] = value;
         }
 
         data = data.substr(n + 2);
@@ -43,35 +35,21 @@ void MessageParser::parse()
     } while (n != string::npos);
 }
 
-void MessageParser::update(const BYTE *data, SIZE datalen)
-{
-    memset(this->rawdata, 0, this->max_message_size);
-    memcpy(this->rawdata, data, datalen);
-    this->datalen = datalen;
-}
-
 int MessageParser::decrypt(AES_CRYPTO ctx)
 {
-    // get iv;
-    CRYPTO::AES_setup_iv(this->rawdata, 16, ctx);
+    if(this->get_enc_algorithm() != MESSAGE_ENC_ALGORITHM_AES)
+    {
+        return -1;
+    }
 
-    // decrypt;
     BYTES out = 0;
-    int outlen = CRYPTO::AES_decrypt(ctx, this->rawdata + 16, this->datalen - 16, &out);
+    int outlen = CRYPTO::AES_decrypt(ctx, this->get_payload(), this->get_payload_size(), &out);
 
     if (outlen < 0)
     {
         delete[] out;
         return -1;
     }
-
-    // update with decrypted data and get next address;
-    // PLAINTEXT addr = 0;
-    // CRYPTO::hex(out, 32, &addr);
-    // this->data.insert(pair<string, string>("next", addr));
-    // delete[] addr;
-
-    // this->update(out + 32, outlen - 32);
 
     this->update(out, outlen);
 
@@ -81,8 +59,13 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
 
 int MessageParser::decrypt(RSA_CRYPTO ctx)
 {
+    if(this->get_enc_algorithm() != MESSAGE_ENC_ALGORITHM_RSA)
+    {
+        return -1;
+    }
+
     BYTES out = 0;
-    int outlen = CRYPTO::RSA_decrypt(ctx, this->rawdata, this->datalen, &out);
+    int outlen = CRYPTO::RSA_decrypt(ctx, this->get_payload(), this->get_payload_size(), &out);
 
     if (outlen < 0)
     {
@@ -98,49 +81,40 @@ int MessageParser::decrypt(RSA_CRYPTO ctx)
 void MessageParser::remove_next()
 {
     PLAINTEXT next = 0;
-    CRYPTO::hex(this->rawdata, 32, &next);
+    CRYPTO::hex(this->get_payload_ptr(), MESSAGE_ADDRESS_SIZE, &next);
 
-    this->data["next"] = next;
+    this->parseddata["next"] = next;
+    this->remove_payload_beg(MESSAGE_ADDRESS_SIZE);
+    this->set_payload_size(this->get_payload_size() - MESSAGE_ADDRESS_SIZE);
+
     delete[] next;
-
-    shift_left(32);
 }
 
 void MessageParser::remove_id()
 {
     BASE64 id = 0;
-    CRYPTO::base64_encode(this->rawdata, 16, &id);
+    CRYPTO::base64_encode(this->get_payload_ptr(), MESSAGE_ID_SIZE, &id);
 
-    this->data["id"] = id;
+    this->parseddata["id"] = id;
+    this->remove_payload_beg(MESSAGE_ID_SIZE);
+    this->set_payload_size(this->get_payload_size() - MESSAGE_ID_SIZE);
+
     delete[] id;
-
-    shift_left(16);
 }
 
 MessageParser &MessageParser::operator=(const MessageParser &mp)
 {
     if (this != &mp)
     {
-        // copy parsed data;
-        this->data = mp.data;
-
-        // allocate new memory buffer for rawdata, and copy from mp;
-        if (this->rawdata)
-        {
-            delete this->rawdata;
-            this->rawdata = 0;
-
-            this->rawdata = new BYTE[this->max_message_size];
-            memcpy(this->rawdata, mp.rawdata, mp.datalen);
-        }
-
-        this->datalen = mp.datalen;
+        this->parseddata = mp.parseddata;
     }
+
+    Message::operator=(mp);
 
     return *this;
 }
 
 string &MessageParser::operator[](const string &key)
 {
-    return this->data[to_lowercase(key)];
+    return this->parseddata[to_lowercase(key)];
 }

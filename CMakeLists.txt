@@ -4,9 +4,9 @@ project(enigma4 VERSION 0.1.0)
 include(CTest)
 enable_testing()
 
-add_executable(enigma4 main.cc server.cc onion_routing.cc message_parser.cc message_builder.cc util.cc client.cc)
-add_executable(client eclient.cc client.cc message_builder.cc message_parser.cc util.cc)
-add_executable(tests test.cc message_builder.cc message_parser.cc util.cc)
+add_executable(enigma4 main.cc server.cc osocket.cc onion_routing.cc message.cc message_parser.cc message_builder.cc util.cc client.cc)
+add_executable(client eclient.cc client.cc message.cc message_builder.cc message_parser.cc util.cc)
+add_executable(tests test.cc message.cc message_builder.cc message_parser.cc util.cc)
 
 target_link_libraries(enigma4 cryptography)
 target_link_libraries(client cryptography)
