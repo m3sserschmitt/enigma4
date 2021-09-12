@@ -28,7 +28,7 @@ Client::Client(const string &pubkey, const string &privkey)
 {
     this->pubkey = (PLAINTEXT)read_file(pubkey, "rb");
     this->serv = new route_t;
-    this->sock = -1;
+    this->sock = new OSocket;
 
     get_key_hexdigest(this->pubkey, this->hexaddress);
 
@@ -44,17 +44,7 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
     mp.remove_id();
     route_t *route = (*routes)[mp["id"]];
 
-    // try RSA decryption;
-    if (not route)
-    {
-        if (mp.decrypt(rsactx) < 0)
-        {
-            return -1;
-        }
-    }
-    else
-
-        if (not route or mp.decrypt(route->aesctx) < 0)
+    if(mp.decrypt(rsactx) < 0 and (not route or mp.decrypt(route->aesctx) < 0))
     {
         return -1;
     }
@@ -66,26 +56,22 @@ void *Client::data_listener(void *args)
 {
     listener_data *listener = (listener_data *)args;
 
-    int sock = listener->sock;
+    OSocket *sock = listener->sock;
     map<string, route_t *> *routes = listener->routes;
     RSA_CRYPTO rsactx = listener->rsactx;
 
-    BYTES rawdata = new BYTE[MESSAGE_MAX_SIZE];
-    ssize_t recvlen;
-
     MessageParser mp;
 
-    while ((recvlen = read(sock, rawdata, MESSAGE_MAX_SIZE)) > 0)
+    while (sock->read_data(mp) > 0)
     {
-        cout << "\n[+] Data received: " << recvlen << " bytes.\n";
-        mp.update(rawdata, recvlen);
+        cout << "\n[+] Data received: " << mp.get_datalen() << " bytes.\n";
 
-        if (Client::decrypt_incoming_message(mp, rsactx, routes) < 0)
+        if (decrypt_incoming_message(mp, rsactx, routes) < 0)
         {
             continue;
         }
 
-        cout << "\nMessage: " << mp.get_data() << "\n";
+        cout << "\nMessage: " << mp.get_payload() << "\n";
     }
 
     return 0;
@@ -95,20 +81,22 @@ int Client::create_connection(const string &host, const string &port)
 {
     struct sockaddr_in sock_addr;
 
-    this->sock = socket(AF_INET, SOCK_STREAM, 0);
+    int _sock = socket(AF_INET, SOCK_STREAM, 0);
 
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_port = htons(atoi(port.c_str()));
     sock_addr.sin_addr.s_addr = inet_addr(host.c_str());
 
-    if (connect(sock, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) < 0)
+    if (connect(_sock, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) < 0)
     {
         return -1;
     }
 
+    this->sock->wrap(_sock);
+
     listener_data *listener = new listener_data;
     listener->routes = &this->routes;
-    listener->sock = this->sock;
+    listener->sock = new OSocket(_sock);
     listener->rsactx = this->rsactx;
 
     pthread_t new_thread;
@@ -287,7 +275,7 @@ int Client::write_serv(MessageBuilder &mb, bool rsa)
         return -1;
     }
 
-    return write(this->sock, mb.get_data(), mb.get_datalen());
+    return this->sock->write_data(mb);
 }
 
 int Client::write_dest(MessageBuilder &mb, route_t *route, bool rsa)
@@ -310,7 +298,7 @@ int Client::write_dest(MessageBuilder &mb, route_t *route, bool rsa)
         return this->write_dest(mb, route);
     }
 
-    return this->write_serv(mb, route);
+    return this->write_serv(mb);
 }
 
 int Client::handshake()
@@ -333,7 +321,7 @@ int Client::handshake()
 
     mb.set_payload("pubkey: " + this->pubkey);
 
-    return this->write_serv(mb, this->serv);
+    return this->write_serv(mb);
 }
 
 int Client::send_dest_key(const string &address)

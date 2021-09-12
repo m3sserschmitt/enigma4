@@ -5,13 +5,14 @@
 #include <string>
 #include <string.h>
 #include <cryptography/types.hh>
+#include <math.h>
 
 #include "message.hh"
 
 class MessageParser : public Message
 {
     std::map<std::string, std::string> parseddata;
-    
+
     void remove_payload_beg(SIZE len)
     {
         BYTES payload = this->get_payload_ptr();
@@ -19,7 +20,18 @@ class MessageParser : public Message
 
         memcpy(payload, payload + len, payload_size);
         payload_size -= len;
-        memset(payload + payload_size, 0, len);    
+        memset(payload + payload_size, 0, len);
+    }
+
+    static SIZE read_payload_size(const BYTE *data)
+    {
+        const BYTE *payload_size_ptr = data + MESSAGE_SIZE_SECTION_OFFSET;
+        SIZE payload_size = *payload_size_ptr;
+
+        payload_size <<= 8;
+        payload_size |= *(payload_size_ptr + 1);
+
+        return payload_size;
     }
 
 public:
@@ -30,16 +42,27 @@ public:
     MessageParser(const MessageParser &mp) : Message(mp), parseddata(mp.parseddata){};
     ~MessageParser(){};
 
-    void update(const BYTE *data, SIZE datalen)
+    SIZE update(const BYTE *data, SIZE datalen)
     {
+        datalen = std::min(datalen, this->read_payload_size(data) + MESSAGE_HEADER_SIZE);
         Message::update(data, datalen);
+        return datalen;
     }
 
-    void append_payload(const BYTE *data, SIZE datalen)
+    SIZE get_required_size() const
+    {
+        return this->get_payload_size() - this->get_actual_payload_size();
+    }
+
+    SIZE append_payload(const BYTE *data, SIZE datalen)
     {
         SIZE payload_size = this->get_payload_size();
+
+        datalen = std::min(this->get_required_size(), datalen);
+
         memcpy(this->get_payload_ptr() + payload_size, data, datalen);
         this->set_payload_size(payload_size + datalen);
+        return datalen;
     }
     SIZE get_payload_size() const
     {
@@ -53,6 +76,11 @@ public:
     SIZE get_actual_payload_size() const
     {
         return Message::get_payload_size();
+    }
+
+    bool is_complete() const
+    {
+        return not this->get_required_size();
     }
 
     int decrypt(AES_CRYPTO ctx);

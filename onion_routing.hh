@@ -19,10 +19,14 @@ class OnionRoutingApp : public App
     OnionRoutingApp(const std::string &pubkey_file, const std::string &privkey_file);
     ~OnionRoutingApp();
 
-    static int setup_session_key(BASE64 key, AES_CRYPTO ctx);
-    static int handshake(connection_t * const conn);
-    static int redirect(connection_t * const conn);
-    
+    static int setup_session_key(MessageParser &mp, connection_t *conn);
+    static int setup_session_pkey(MessageParser &mp, connection_t *conn);
+
+    static int handshake(connection_t *const conn);
+    static const CHAR * insert_client(connection_t *const conn);
+    static int redirect(connection_t *const conn);
+    static int remove_client(connection_t *conn, const CHAR *clientaddr);
+
     static void *new_thread(void *);
 
 public:

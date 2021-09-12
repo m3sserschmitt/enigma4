@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 #include <queue>
+#include "osocket.hh"
 
 class Client
 {
@@ -24,13 +25,13 @@ class Client
 
     struct listener_data
     {
-        int sock;
+        OSocket *sock;
         std::map<std::string, route_t *> *routes;
         RSA_CRYPTO rsactx;
         
     };
 
-    int sock;
+    OSocket *sock;
     route_t *serv;
 
     std::map<std::string, route_t *> routes;

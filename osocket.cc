@@ -12,35 +12,57 @@ ssize_t OSocket::write_data(const BYTE *data, SIZE datalen) const
     return write(this->fd, data, datalen);
 }
 
+ssize_t OSocket::read_buffer(MessageParser &mp)
+{
+    SIZE buffread = 0;
+    if (this->delta > 0)
+    {
+        buffread = mp.update(this->buffer, this->delta);
+        this->delta -= buffread;
+    }
+
+    return buffread;
+}
+
 ssize_t OSocket::read_data(MessageParser &mp)
 {
-    ssize_t dataread;
-    SIZE required = O_SOCKET_MAX_BUFFER_SIZE;
+    ssize_t inlen;
+    SIZE parsed = this->read_buffer(mp);
 
-    while ((dataread = read(this->fd, this->buffer + (this->delta > 0 ? this->delta : 0), required)) > 0)
+    if (parsed and mp.is_complete())
     {
-        if (this->delta < 0) // not enough data read previously
+        return parsed;
+    }
+
+    while ((inlen = read(this->fd, this->buffer + (this->delta > 0 ? this->delta : 0), O_SOCKET_MAX_BUFFER_SIZE)) > 0)
+    {
+        if (this->delta < 0) // if not enough data read previously
         {
-            mp.append_payload(this->buffer, dataread);
+            // append to payload in order to complete message;
+            parsed = mp.append_payload(this->buffer, inlen);
+            this->delta += inlen;
         }
         else
         {
-            mp.update(this->buffer, dataread);
+            parsed = mp.update(this->buffer, inlen);
+            this->delta = -1 * mp.get_required_size();
+
+            if (not this->delta)
+            {
+                this->delta = inlen - parsed;
+            }
         }
 
-        this->delta = mp.get_actual_payload_size() - mp.get_payload_size();
-
-        if (this->delta >= 0) // more data than required
+        if (delta > 0)
         {
-            memcpy(this->buffer, this->buffer + dataread - delta, this->delta);
+            memcpy(this->buffer, this->buffer + parsed, this->delta);
+        }
+
+        if (mp.is_complete())
+        {
             break;
-        }
-        else
-        {
-            required = this->delta;
-            continue;
         }
     }
 
-    return dataread;
+    return inlen < 0 ? -1 : parsed;
 }
