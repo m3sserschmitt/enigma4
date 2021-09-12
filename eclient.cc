@@ -76,19 +76,19 @@ int main(int argc, char **argv)
     client.handshake();
 
     string input;
-    if (dk)
-    {
-        do
-        {
-            cout << "Would you like to exchange key with destination address? (y/n): ";
-            cin >> input;
+    // if (dk)
+    // {
+    //     do
+    //     {
+    //         cout << "Would you like to exchange key with destination address? (y/n): ";
+    //         cin >> input;
 
-            if (input == "y")
-            {
-                client.send_dest_key(dest_address);
-            }
-        } while (input != "y" and input != "n");
-    }
+    //         if (input == "y")
+    //         {
+    //             client.send_dest_key(dest_address);
+    //         }
+    //     } while (input != "y" and input != "n");
+    // }
 
     while (dest_address.size())
     {

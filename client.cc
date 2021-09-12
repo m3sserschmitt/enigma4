@@ -21,9 +21,6 @@
 
 using namespace std;
 
-// pthread_mutex_t Client::mt;
-// queue<string> Client::messages;
-
 Client::Client(const string &pubkey, const string &privkey)
 {
     this->pubkey = (PLAINTEXT)read_file(pubkey, "rb");
@@ -307,12 +304,12 @@ int Client::handshake()
 
     if (this->read_base64_key(this->serv, &enckey) < 0)
     {
-        delete enckey;
+        delete[] enckey;
         return -1;
     }
 
     MessageBuilder mb("pass: " + string(enckey));
-    delete enckey;
+    delete[] enckey;
 
     if (this->write_serv(mb, 1) < 0)
     {
@@ -324,6 +321,7 @@ int Client::handshake()
     return this->write_serv(mb);
 }
 
+/*
 int Client::send_dest_key(const string &address)
 {
     BASE64 key = 0;
@@ -336,12 +334,12 @@ int Client::send_dest_key(const string &address)
 
     return this->write_dest(mb, route, 1);
 }
+*/
 
 int Client::write_data(const BYTE *data, SIZE datalen, const string &address)
 {
     MessageBuilder mb(data, datalen);
     route_t *route = this->routes[address];
-    // mb.enable_next(1);
 
     if (not route)
     {

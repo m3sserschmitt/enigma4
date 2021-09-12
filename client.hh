@@ -60,9 +60,7 @@ public:
     const std::string setup_dest(const std::string &keyfile, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
 
     int create_connection(const std::string &host, const std::string &port);
-
     int handshake();
-    int send_dest_key(const std::string &address);
 
     int write_data(const BYTE *data, SIZE datalen, const std::string &address);
 };
