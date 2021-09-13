@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -rdynamic CMakeFiles/tests.dir/test.cc.o CMakeFiles/tests.dir/message.cc.o CMakeFiles/tests.dir/message_builder.cc.o CMakeFiles/tests.dir/message_parser.cc.o CMakeFiles/tests.dir/util.cc.o -o tests  -lcryptography 

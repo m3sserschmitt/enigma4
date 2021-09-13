@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/rujas/code_workspace/enigma4/cmd.cc
+algorithm
+-
+cmd.hh
+/home/rujas/code_workspace/enigma4/cmd.hh
+
+/home/rujas/code_workspace/enigma4/cmd.hh
+string
+-
+
