@@ -14,7 +14,7 @@ void gen_keys()
     CRYPTO::RSA_generate_keys("client_public2.pem", "client_private2.pem", 4096, 0, 0, 0, 0);
 }
 
-/*int main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     const char *ck = get_cmd_option(argv, argc, "-ck");
 
@@ -82,4 +82,4 @@ void gen_keys()
     }
 
     return 0;
-}*/
+}

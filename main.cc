@@ -26,7 +26,7 @@ int main(int argc, char **argv)
     }
 
     const char *host = get_cmd_option(argv, argc, "-host");
-    
+
     if (not host)
     {
         cout << "[-] Warning: no host provided; listening on localhost.\n";
@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 
     const char *port = get_cmd_option(argv, argc, "-port");
 
-    if(not port)
+    if (not port)
     {
         cout << "[-] Warning: no port provided; listening on 8080.\n";
         port = "8080";
@@ -60,6 +60,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+    cout << "[+] Listening on port " << host << ":" << port << "\n";
     server->accept_clients();
 
     return EXIT_SUCCESS;
