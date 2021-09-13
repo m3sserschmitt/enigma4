@@ -121,7 +121,7 @@ int Server::socket_bind()
 
         if ((setsockopt(this->servsock, SOL_SOCKET, SO_REUSEADDR, &reuse_address, sizeof(reuse_address))) < 0)
         {
-            return -1;
+            continue;
         }
 
         if (bind(this->servsock, p->ai_addr, p->ai_addrlen) == 0)

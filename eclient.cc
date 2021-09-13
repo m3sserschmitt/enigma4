@@ -1,30 +1,13 @@
 #include <iostream>
-#include <string>
-#include <string.h>
-#include <pthread.h>
 #include <unistd.h>
-#include <algorithm>
+
 #include "client.hh"
 
 #include <cryptography/cryptography.hh>
 
+#include "cmd.hh"
+
 using namespace std;
-
-char *get_cmd_option(char **argv, int argc, const std::string &option)
-{
-    char **itr = std::find(argv, argv + argc, option);
-    if (itr != argv + argc && ++itr != argv + argc)
-    {
-        return *itr;
-    }
-
-    return 0;
-}
-
-bool cmd_option_exists(char **argv, int argc, const std::string &option)
-{
-    return std::find(argv, argv + argc, option) != argv + argc;
-}
 
 void gen_keys()
 {
@@ -72,7 +55,7 @@ int main(int argc, char **argv)
 
     cout << "[+] Destination address: " << dest_address << "\n";
 
-    client.create_connection("127.0.0.1", "8080");
+    client.create_connection("localhost", "8080");
     client.handshake();
 
     string input;

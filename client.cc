@@ -41,7 +41,7 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
     mp.remove_id();
     route_t *route = (*routes)[mp["id"]];
 
-    if(mp.decrypt(rsactx) < 0 and (not route or mp.decrypt(route->aesctx) < 0))
+    if (mp.decrypt(rsactx) < 0 and (not route or mp.decrypt(route->aesctx) < 0))
     {
         return -1;
     }
@@ -76,15 +76,38 @@ void *Client::data_listener(void *args)
 
 int Client::create_connection(const string &host, const string &port)
 {
-    struct sockaddr_in sock_addr;
+    int _sock;
 
-    int _sock = socket(AF_INET, SOCK_STREAM, 0);
+    addrinfo addr_info;
+    addr_info.ai_family = AF_INET;
+    addr_info.ai_socktype = SOCK_STREAM;
+    addr_info.ai_protocol = 0;
+    addr_info.ai_flags = 0;
 
-    sock_addr.sin_family = AF_INET;
-    sock_addr.sin_port = htons(atoi(port.c_str()));
-    sock_addr.sin_addr.s_addr = inet_addr(host.c_str());
+    addrinfo *res;
+    addrinfo *p;
 
-    if (connect(_sock, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) < 0)
+    if (getaddrinfo(host.c_str(), port.c_str(), &addr_info, &res) != 0)
+    {
+        return -1;
+    }
+
+    for (p = res; p != NULL; p = res->ai_next)
+    {
+        if((_sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
+        {
+            continue;
+        }
+
+        if (connect(_sock, p->ai_addr, p->ai_addrlen) == 0)
+        {
+            break;
+        }
+
+        close(_sock);
+    }
+
+    if(not p)
     {
         return -1;
     }
