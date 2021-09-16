@@ -12,6 +12,7 @@
 #include "types.hh"
 #include "message_builder.hh"
 #include "message_parser.hh"
+#include "tls_socket.hh"
 
 #include <cryptography/random.hh>
 #include <cryptography/base64.hh>
@@ -21,19 +22,25 @@
 
 using namespace std;
 
-Client::Client(const string &pubkey, const string &privkey)
+Client::Client(const string &pubkey, const string &privkey, bool tls)
 {
     this->pubkey = (PLAINTEXT)read_file(pubkey, "rb");
     this->serv = new route_t;
-    this->sock = new OSocket;
+
+    if (tls)
+    {
+        this->sock = new Socket;
+    }
+    else
+    {
+        this->sock = new TLSSocket();
+    }
 
     get_key_hexdigest(this->pubkey, this->hexaddress);
 
     this->rsactx = CRYPTO::RSA_CRYPTO_new();
     CRYPTO::RSA_init_key_file(privkey, 0, 0, PRIVATE_KEY, this->rsactx);
     CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT);
-
-    // pthread_mutex_init(&this->mt, 0);
 }
 
 int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<string, route_t *> *routes)
@@ -53,7 +60,7 @@ void *Client::data_listener(void *args)
 {
     listener_data *listener = (listener_data *)args;
 
-    OSocket *sock = listener->sock;
+    Socket *sock = listener->sock;
     map<string, route_t *> *routes = listener->routes;
     RSA_CRYPTO rsactx = listener->rsactx;
 
@@ -76,47 +83,11 @@ void *Client::data_listener(void *args)
 
 int Client::create_connection(const string &host, const string &port)
 {
-    int _sock;
-
-    addrinfo addr_info;
-    addr_info.ai_family = AF_INET;
-    addr_info.ai_socktype = SOCK_STREAM;
-    addr_info.ai_protocol = 0;
-    addr_info.ai_flags = 0;
-
-    addrinfo *res;
-    addrinfo *p;
-
-    if (getaddrinfo(host.c_str(), port.c_str(), &addr_info, &res) != 0)
-    {
-        return -1;
-    }
-
-    for (p = res; p != NULL; p = res->ai_next)
-    {
-        if((_sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
-        {
-            continue;
-        }
-
-        if (connect(_sock, p->ai_addr, p->ai_addrlen) == 0)
-        {
-            break;
-        }
-
-        close(_sock);
-    }
-
-    if(not p)
-    {
-        return -1;
-    }
-
-    this->sock->wrap(_sock);
+    this->sock->create_connection(host, port);
 
     listener_data *listener = new listener_data;
     listener->routes = &this->routes;
-    listener->sock = new OSocket(_sock);
+    listener->sock = this->sock;
     listener->rsactx = this->rsactx;
 
     pthread_t new_thread;

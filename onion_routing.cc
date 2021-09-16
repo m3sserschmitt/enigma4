@@ -191,7 +191,7 @@ int OnionRoutingApp::handle_client(int clientsock)
     pthread_t thread;
     connection_t *connection = new connection_t;
 
-    connection->sock = new OSocket(clientsock);
+    connection->sock = new Socket(clientsock);
 
     connection->aesctx = CRYPTO::AES_CRYPTO_new();
     connection->rsactx = CRYPTO::RSA_CRYPTO_new();

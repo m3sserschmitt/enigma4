@@ -10,7 +10,7 @@
 #include <map>
 #include <string>
 #include <queue>
-#include "osocket.hh"
+#include "socket.hh"
 
 class Client
 {
@@ -25,13 +25,12 @@ class Client
 
     struct listener_data
     {
-        OSocket *sock;
+        Socket *sock;
         std::map<std::string, route_t *> *routes;
         RSA_CRYPTO rsactx;
-        
     };
 
-    OSocket *sock;
+    Socket *sock;
     route_t *serv;
 
     std::map<std::string, route_t *> routes;
@@ -48,11 +47,11 @@ class Client
 
     static int decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, route_t *> *routes);
     static void *data_listener(void *node);
-    
+
     int read_base64_key(route_t *route, BASE64 *key) const;
 
 public:
-    Client(const std::string &pubkey, const std::string &privkey);
+    Client(const std::string &pubkey, const std::string &privkey, bool tls = true);
 
     const std::string &get_client_hexaddress() const { return this->hexaddress; }
 
