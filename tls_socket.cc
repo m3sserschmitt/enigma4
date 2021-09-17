@@ -2,10 +2,6 @@
 
 int TLSSocket::ssl_init()
 {
-    // SSL_library_init();
-    // SSLeay_add_ssl_algorithms();
-    // SSL_load_error_strings();
-
     const SSL_METHOD *method = TLS_client_method();
 
     if (not method)

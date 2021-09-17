@@ -23,7 +23,7 @@ class OnionRoutingApp : public App
     static int setup_session_pkey(MessageParser &mp, connection_t *conn);
 
     static int handshake(connection_t *const conn);
-    static const CHAR * insert_client(connection_t *const conn);
+    static const CHAR *insert_client(connection_t *const conn);
     static int redirect(connection_t *const conn);
     static int remove_client(connection_t *conn, const CHAR *clientaddr);
 
@@ -33,6 +33,8 @@ public:
     static OnionRoutingApp &get_handle(const std::string &pubkey_file, const std::string &privkey_file);
 
     int handle_client(int clientsock);
+
+    const std::string get_address() const { return this->address; }
 };
 
 #endif

@@ -119,6 +119,8 @@ void log_ssl()
 
 int main()
 {
-    TLSSocket s("google.ro", "443");
-    cout << s.get_cipher() << "\n";
+    Socket *s = new TLSSocket;
+    s->create_connection("google.ro", "443");
+
+    cout << s->get_cipher() << "\n";
 }

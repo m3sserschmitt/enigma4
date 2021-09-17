@@ -60,7 +60,8 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    cout << "[+] Listening on port " << host << ":" << port << "\n";
+    cout << "[+] Local address: " << app.get_address() << "\n";
+    cout << "[+] Listening on " << host << ":" << port << "\n";
     server->accept_clients();
 
     return EXIT_SUCCESS;

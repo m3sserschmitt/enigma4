@@ -17,6 +17,9 @@ class TLSSocket : public Socket
     ssize_t write_data(const MessageBuilder &mb) const;
     ssize_t write_data(const BYTE *data, SIZE datalen) const;
 
+    TLSSocket(const TLSSocket &s);
+    const TLSSocket &operator=(const TLSSocket &);
+
 public:
     TLSSocket() : Socket() { this->ssl_init(); };
     TLSSocket(int fd) : Socket(fd)

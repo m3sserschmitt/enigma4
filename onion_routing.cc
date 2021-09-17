@@ -23,12 +23,9 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
     cout << "[+] pubkey init: " << CRYPTO::RSA_init_key(key, 0, 0, PUBLIC_KEY, this->rsactx) << "\n";
     cout << "[+] privkey init: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx) << "\n";
 
-    // cout << "[+] encr init: " << RSA_init_ctx(this->rsactx, ENCRYPT) << "\n";
     cout << "[+] RSA decr init: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT) << "\n";
 
-    // this->pubkey = (PLAINTEXT)read_file(pubkey_file, "rb");
-    get_key_hexdigest(key, this->address);
-    cout << "[+] current address: " << this->address << "\n";
+    KEY_UTIL::get_key_hexdigest(key, this->address);
 }
 
 OnionRoutingApp::~OnionRoutingApp()
@@ -85,7 +82,7 @@ int OnionRoutingApp::setup_session_pkey(MessageParser &mp, connection_t *conn)
         }
 
         conn->keydigest = 0;
-        get_keydigest(mp["pubkey"], &conn->keydigest);
+        KEY_UTIL::get_keydigest(mp["pubkey"], &conn->keydigest);
     }
 
     return 0;

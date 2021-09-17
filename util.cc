@@ -115,7 +115,7 @@ void remove_str(string &from, const string &str)
     from.resize(f_len);
 }
 
-int PEM_to_byteskey(string pem, BYTES *byteskey)
+int KEY_UTIL::PEM_to_byteskey(string pem, BYTES *byteskey)
 {
     remove_str(pem, "-----BEGIN PUBLIC KEY-----");
     remove_str(pem, "-----END PUBLIC KEY-----");
@@ -124,7 +124,7 @@ int PEM_to_byteskey(string pem, BYTES *byteskey)
     return CRYPTO::base64_decode((BASE64)pem.data(), byteskey);
 }
 
-int get_keydigest(const string &pem, BYTES *digest)
+int KEY_UTIL::get_keydigest(const string &pem, BYTES *digest)
 {
     BYTES byteskey = 0;
     int result = PEM_to_byteskey(pem, &byteskey);
@@ -141,7 +141,7 @@ int get_keydigest(const string &pem, BYTES *digest)
     return result;
 }
 
-int get_key_hexdigest(const string &pem, PLAINTEXT *address)
+int KEY_UTIL::get_key_hexdigest(const string &pem, PLAINTEXT *address)
 {
     BYTES digest = 0;
     int result = get_keydigest(pem, &digest);
@@ -159,7 +159,7 @@ int get_key_hexdigest(const string &pem, PLAINTEXT *address)
     return result;
 }
 
-int get_key_hexdigest(const string &pem, string &address)
+int KEY_UTIL::get_key_hexdigest(const string &pem, string &address)
 {
     PLAINTEXT buffer = 0;
     int result = get_key_hexdigest(pem, &buffer);

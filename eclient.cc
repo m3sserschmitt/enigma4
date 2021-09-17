@@ -16,6 +16,7 @@ void gen_keys()
 
 int main(int argc, char **argv)
 {
+    
     const char *ck = get_cmd_option(argv, argc, "-ck");
 
     if (not ck)
@@ -55,8 +56,9 @@ int main(int argc, char **argv)
 
     cout << "[+] Destination address: " << dest_address << "\n";
 
-    client.create_connection("localhost", "8080");
-    client.handshake();
+    cout << "connection: " << client.create_connection("localhost", "8080") << "\n";
+    
+    cout << "handshake: " << client.handshake() << "\n";
 
     string input;
     // if (dk)
