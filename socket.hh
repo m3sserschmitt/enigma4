@@ -1,5 +1,5 @@
-#ifndef O_SOCKET_HH
-#define O_SOCKET_HH
+#ifndef SOCKET_HH
+#define SOCKET_HH
 
 #include "message_parser.hh"
 #include "message_builder.hh"

@@ -20,6 +20,15 @@ class MessageBuilder : public Message
         this->set_payload_size(payload_size + datalen);
     }
 
+    void append_payload_end(const BYTE *data, SIZE datalen)
+    {
+        BYTES payload = this->get_payload_ptr();
+        SIZE payload_size = this->get_payload_size();
+
+        memcpy(payload + payload_size, data, datalen);
+        this->set_payload_size(payload_size + datalen);
+    }
+
 public:
     MessageBuilder() : Message(){};
     MessageBuilder(const CHAR *data) : Message(data) {}
@@ -45,7 +54,9 @@ public:
     }
 
     int encrypt(AES_CRYPTO ctx);
-    int encrypt(RSA_CRYPTO ctx);
+    // int encrypt(RSA_CRYPTO ctx);
+
+    int handshake(AES_CRYPTO aesctx, RSA_CRYPTO rsactx, const std::string &pubkeypem);
 
     MessageBuilder &operator=(const MessageBuilder &mb);
 };

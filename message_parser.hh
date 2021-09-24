@@ -4,8 +4,9 @@
 #include <map>
 #include <string>
 #include <string.h>
-#include <cryptography/types.hh>
+#include <cryptography/cryptography.hh>
 #include <math.h>
+#include "session.hh"
 
 #include "message.hh"
 
@@ -33,6 +34,8 @@ class MessageParser : public Message
 
         return payload_size;
     }
+
+    void parse(const CHAR *data);
 
 public:
     MessageParser() : Message(){};
@@ -84,12 +87,14 @@ public:
     }
 
     int decrypt(AES_CRYPTO ctx);
-    int decrypt(RSA_CRYPTO ctx);
+    int decrypt(Session *s);
+
+    int handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
 
     void remove_next();
     void remove_id();
 
-    void parse();
+    void parse() { this->parse((const CHAR *)this->get_payload_ptr()); }
     bool key_exists(const std::string &key) const
     {
         return this->parseddata.find(key) != this->parseddata.end();

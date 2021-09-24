@@ -16,7 +16,7 @@ void gen_keys()
 
 int main(int argc, char **argv)
 {
-    
+
     const char *ck = get_cmd_option(argv, argc, "-ck");
 
     if (not ck)
@@ -46,34 +46,16 @@ int main(int argc, char **argv)
     Client client(ck, pk);
 
     cout << "[+] Client address: " << client.get_client_hexaddress() << "\n";
+    cout << "[+] Connection status: " << client.create_connection("localhost", "8080", sk) << "\n";
 
-    client.setup_server(sk);
+    string server_address = client.get_server_address();
+    cout << "[+] Server address: " << server_address << "\n";
 
-    const BYTE *passphrase = (BYTES) "32bit-long passphrase for encryption";
-    const BYTE *session_id = (BYTES) "this is id for session";
-
-    string dest_address = client.setup_dest(dk, passphrase, session_id);
+    string dest_address = client.add_node(dk, server_address);
 
     cout << "[+] Destination address: " << dest_address << "\n";
 
-    cout << "connection: " << client.create_connection("localhost", "8080") << "\n";
-    
-    cout << "handshake: " << client.handshake() << "\n";
-
     string input;
-    // if (dk)
-    // {
-    //     do
-    //     {
-    //         cout << "Would you like to exchange key with destination address? (y/n): ";
-    //         cin >> input;
-
-    //         if (input == "y")
-    //         {
-    //             client.send_dest_key(dest_address);
-    //         }
-    //     } while (input != "y" and input != "n");
-    // }
 
     while (dest_address.size())
     {

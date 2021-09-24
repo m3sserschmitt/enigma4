@@ -2,12 +2,13 @@
 #include "util.hh"
 #include <string.h>
 #include <cryptography/cryptography.hh>
+#include "session.hh"
 
 using namespace std;
 
-void MessageParser::parse()
+void MessageParser::parse(const CHAR *data)
 {
-    string data = (PLAINTEXT)this->get_payload();
+    string _data = data;
 
     size_t p, n;
 
@@ -17,10 +18,10 @@ void MessageParser::parse()
 
     do
     {
-        n = data.find("\r\n");
-        line = data.substr(0, n);
+        n = _data.find("\r\n");
+        line = _data.substr(0, n);
 
-        p = data.find(':');
+        p = _data.find(':');
 
         if (p != string::npos)
         {
@@ -30,14 +31,14 @@ void MessageParser::parse()
             this->parseddata[key] = value;
         }
 
-        data = data.substr(n + 2);
+        _data = _data.substr(n + 2);
 
     } while (n != string::npos);
 }
 
 int MessageParser::decrypt(AES_CRYPTO ctx)
 {
-    if(this->get_enc_algorithm() != MESSAGE_ENC_ALGORITHM_AES)
+    if (this->get_enc_algorithm() != MESSAGE_ENC_ALGORITHM_AES)
     {
         return -1;
     }
@@ -54,28 +55,76 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
     this->update(out, outlen);
 
     delete[] out;
-    return outlen;
+    return 0;
 }
 
-int MessageParser::decrypt(RSA_CRYPTO ctx)
+int MessageParser::decrypt(Session *session)
 {
-    if(this->get_enc_algorithm() != MESSAGE_ENC_ALGORITHM_RSA)
+    this->remove_id();
+    AES_CRYPTO ctx = session->get_ctx((*this)["id"]);
+
+    return this->decrypt(ctx);
+}
+
+int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
+{
+    if (not this->is_handshake() or not CRYPTO::RSA_decrypt_ready(rsactx))
     {
         return -1;
     }
 
-    BYTES out = 0;
-    int outlen = CRYPTO::RSA_decrypt(ctx, this->get_payload(), this->get_payload_size(), &out);
+    this->remove_id();
 
-    if (outlen < 0)
+    BYTES payload = this->get_payload_ptr();
+    SIZE payload_size = this->get_payload_size();
+
+    BYTES key = 0;
+    string pubkey_hexdigest;
+    BYTES data = 0;
+
+    int decrlen;
+
+    int ret = 0;
+
+    if ((decrlen = CRYPTO::RSA_decrypt(rsactx, payload, 512, &key)) < 0)
     {
-        delete[] out;
-        return -1;
+        ret = -1;
+        goto endfunc;
     }
 
-    this->update(out, outlen);
+    payload += 512;
+    payload_size -= 512;
 
-    return outlen;
+    if (CRYPTO::AES_setup_key(key, decrlen, aesctx) < 0 or CRYPTO::AES_init(0, 0, 0, 0, aesctx) < 0)
+    {
+        ret = -1;
+        goto endfunc;
+    }
+
+    if ((decrlen = CRYPTO::AES_decrypt(aesctx, payload, payload_size, &data)) < 0)
+    {
+        ret = -1;
+        goto endfunc;
+    }
+
+    data[decrlen] = 0;
+    this->parse((const CHAR *)data);
+
+    if(not this->key_exists("pubkey"))
+    {
+        ret = -1;
+        goto endfunc;
+    }
+
+    KEY_UTIL::get_key_hexdigest((*this)["pubkey"], pubkey_hexdigest);
+    (*this)["address"] = pubkey_hexdigest;
+
+endfunc:
+
+    delete[] key;
+    delete[] data;
+
+    return ret;
 }
 
 void MessageParser::remove_next()
@@ -83,7 +132,7 @@ void MessageParser::remove_next()
     PLAINTEXT next = 0;
     CRYPTO::hex(this->get_payload_ptr(), MESSAGE_ADDRESS_SIZE, &next);
 
-    this->parseddata["next"] = next;
+    this->parseddata["next"] = string(next);
     this->remove_payload_beg(MESSAGE_ADDRESS_SIZE);
     this->set_payload_size(this->get_payload_size() - MESSAGE_ADDRESS_SIZE);
 
@@ -92,10 +141,10 @@ void MessageParser::remove_next()
 
 void MessageParser::remove_id()
 {
-    BASE64 id = 0;
+    BASE64 id = new CHAR[128];
     CRYPTO::base64_encode(this->get_payload_ptr(), MESSAGE_ID_SIZE, &id);
 
-    this->parseddata["id"] = id;
+    this->parseddata["id"] = string(id);
     this->remove_payload_beg(MESSAGE_ID_SIZE);
     this->set_payload_size(this->get_payload_size() - MESSAGE_ID_SIZE);
 

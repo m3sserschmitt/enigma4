@@ -100,6 +100,8 @@ public:
         this->set_payload(data.c_str());
     }
 
+    bool is_handshake() const { return this->get_enc_algorithm() == MESSAGE_HANDSHAKE; }
+
     const BYTE *get_data(SIZE &datalen) const
     {
         datalen = this->datalen;

@@ -5,13 +5,13 @@
 #include <map>
 
 #include "app.h"
-#include "types.hh"
+#include "connection.hh"
 
 class OnionRoutingApp : public App
 {
     static const SIZE max_message_size = 4096;
 
-    static std::map<std::string, connection_t *> clients;
+    static std::map<std::string, Connection *> clients;
 
     static RSA_CRYPTO rsactx;
     static std::string address;
@@ -19,13 +19,12 @@ class OnionRoutingApp : public App
     OnionRoutingApp(const std::string &pubkey_file, const std::string &privkey_file);
     ~OnionRoutingApp();
 
-    static int setup_session_key(MessageParser &mp, connection_t *conn);
-    static int setup_session_pkey(MessageParser &mp, connection_t *conn);
+    static int setup_session(MessageParser &mp, Connection *conn);
+    static int try_handshake(MessageParser &mp, Connection *conn);
+    static int forward_message(MessageParser &mp);
 
-    static int handshake(connection_t *const conn);
-    static const CHAR *insert_client(connection_t *const conn);
-    static int redirect(connection_t *const conn);
-    static int remove_client(connection_t *conn, const CHAR *clientaddr);
+    static int redirect(Connection *const conn);
+    // static int remove_client(Connection *conn, const CHAR *clientaddr);
 
     static void *new_thread(void *);
 
