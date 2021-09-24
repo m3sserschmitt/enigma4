@@ -17,10 +17,15 @@ class Connection
     const Connection &operator=(const Connection &);
 
 public:
-    Session *session;
+    SessionManager *session;
 
-    Connection() : sock(0), session(new Session) {}
-    Connection(Socket *sock) : sock(sock), session(new Session) {}
+    Connection() : sock(0), session(new SessionManager) {}
+    Connection(Socket *sock) : sock(sock), session(new SessionManager) {}
+    ~Connection()
+    {
+        delete sock;
+        delete session;
+    }
 
     ssize_t read_data(MessageParser &mp) const { return this->sock->read_data(mp); }
     ssize_t write_data(const BYTE *data, SIZE datalen) const { return this->sock->write_data(data, datalen); }

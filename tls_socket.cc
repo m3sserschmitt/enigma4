@@ -46,7 +46,7 @@ ssize_t TLSSocket::read_data()
     SIZE delta = this->get_delta();
     BYTES buffer = this->get_buffer();
 
-    return SSL_read(this->ssl, buffer + (delta > 0 ? delta : 0), O_SOCKET_MAX_BUFFER_SIZE);
+    return SSL_read(this->ssl, buffer + (delta > 0 ? delta : 0), Socket::get_max_socket_buff_read());
 }
 
 ssize_t TLSSocket::write_data(const MessageBuilder &mb) const

@@ -17,14 +17,16 @@ class OnionRoutingApp : public App
     static std::string address;
 
     OnionRoutingApp(const std::string &pubkey_file, const std::string &privkey_file);
-    ~OnionRoutingApp();
+    ~OnionRoutingApp()
+    {
+        CRYPTO::RSA_CRYPTO_free(rsactx);
+    }
 
     static int setup_session(MessageParser &mp, Connection *conn);
     static int try_handshake(MessageParser &mp, Connection *conn);
     static int forward_message(MessageParser &mp);
 
     static int redirect(Connection *const conn);
-    // static int remove_client(Connection *conn, const CHAR *clientaddr);
 
     static void *new_thread(void *);
 

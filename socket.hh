@@ -7,10 +7,10 @@
 #include <unistd.h>
 #include <string>
 
-#define O_SOCKET_MAX_BUFFER_SIZE 2048
-
 class Socket
 {
+    static const SIZE SOCKET_MAX_BUFFER_SIZE = 2048;
+
     int fd;
     BYTES buffer;
     int delta;
@@ -28,32 +28,32 @@ protected:
 
 public:
     Socket() : fd(-1),
-               buffer(new BYTE[O_SOCKET_MAX_BUFFER_SIZE]),
+               buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
                delta(0){};
-
     Socket(int fd) : fd(fd),
-                     buffer(new BYTE[O_SOCKET_MAX_BUFFER_SIZE]),
+                     buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
                      delta(0){};
-
     Socket(const std::string &host, const std::string port) : fd(-1),
-                                                              buffer(new BYTE[O_SOCKET_MAX_BUFFER_SIZE]),
+                                                              buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
                                                               delta(0)
     {
         this->create_connection(host, port);
     };
-
     Socket(const Socket &s) : fd(s.fd),
-                              buffer(new BYTE[O_SOCKET_MAX_BUFFER_SIZE]),
+                              buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
                               delta(s.delta)
     {
-        memcpy(this->buffer, s.buffer, O_SOCKET_MAX_BUFFER_SIZE);
+        memcpy(this->buffer, s.buffer, SOCKET_MAX_BUFFER_SIZE);
+    }
+    virtual ~Socket()
+    {
+        delete[] buffer;
     }
 
     virtual int create_connection(const std::string &host, const std::string &port);
 
-    int get_fd() const { return this->fd; }
-
     virtual void wrap(int fd) { this->fd = fd; };
+    int get_fd() const { return this->fd; }
     void close_fd()
     {
         close(this->fd);
@@ -65,6 +65,7 @@ public:
     ssize_t read_data(MessageParser &mp);
 
     virtual const CHAR *get_cipher() const { return "(NONE)"; }
+    static SIZE get_max_socket_buff_read() { return SOCKET_MAX_BUFFER_SIZE; }
 
     const Socket &operator=(const Socket &s);
 };

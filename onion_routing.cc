@@ -28,11 +28,6 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
     KEY_UTIL::get_key_hexdigest(key, this->address);
 }
 
-OnionRoutingApp::~OnionRoutingApp()
-{
-    CRYPTO::RSA_CRYPTO_free(this->rsactx);
-}
-
 OnionRoutingApp &OnionRoutingApp::get_handle(const string &pubkey_file, const string &privkey_file)
 {
     static OnionRoutingApp app(pubkey_file, privkey_file);
@@ -109,19 +104,8 @@ void *OnionRoutingApp::new_thread(void *args)
         return 0;
     }
 
-    // if (handshake(conn) < 0)
-    // {
-    //     return 0;
-    // }
-
-    // const CHAR *clientaddr = insert_client(conn);
-
-    // cout << "[+] New Connection from " << clientaddr << "\n";
-
     redirect(conn);
-    // remove_client(conn, clientaddr);
 
-    // delete[] clientaddr;
     delete conn;
 
     return 0;
@@ -131,12 +115,6 @@ int OnionRoutingApp::handle_client(int clientsock)
 {
     pthread_t thread;
     Connection *connection = new Connection(new Socket(clientsock));
-
-    // connection->aesctx = CRYPTO::AES_CRYPTO_new();
-    // connection->rsactx = CRYPTO::RSA_CRYPTO_new();
-
-    // CRYPTO::AES_iv_append(1, connection->aesctx);
-    // CRYPTO::AES_iv_autoset(1, connection->aesctx);
 
     return pthread_create(&thread, 0, this->new_thread, (void *)connection) ? 0 : -1;
 }

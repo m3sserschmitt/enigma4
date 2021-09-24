@@ -79,7 +79,7 @@ int Client::setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, s
 
     newroute->aesctx_dup(aesctx);
 
-    if(mp.handshake(rsactx, newroute->get_aesctx()) < 0)
+    if (mp.handshake(rsactx, newroute->get_aesctx()) < 0)
     {
         return -1;
     }
@@ -122,14 +122,14 @@ void *Client::data_listener(void *args)
         if (mp.is_handshake())
         {
             cout << "\n[+] Handshake received\n";
-            if(setup_session_from_handshake(mp, rsactx, routes, aesctx) < 0)
+            if (setup_session_from_handshake(mp, rsactx, routes, aesctx) < 0)
             {
                 cout << "[+] Handshake failed\n";
                 continue;
             }
 
             cout << "[+] Handshake completed\n";
-            
+
             continue;
         }
 
@@ -187,23 +187,30 @@ const string Client::setup_dest(const string &keyfile, Route **route, const BYTE
         return "";
     }
 
-    if (dest_route->set_id(id) < 0)
+    if (this->serv)
     {
-        return "";
+        if (dest_route->set_id(this->serv->get_id()) < 0)
+        {
+            return "";
+        }
+    }
+    else
+    {
+        dest_route->set_id(id);
     }
 
     const CHAR *hexdigest = dest_route->get_key_hexdigest();
-    const CHAR *base64id = dest_route->encode_id();
+    // const CHAR *base64id = dest_route->encode_id();
 
     this->routes[hexdigest] = dest_route;
-    this->routes[base64id] = dest_route;
+    // this->routes[base64id] = dest_route;
 
     if (route)
     {
         *route = dest_route;
     }
 
-    delete[] base64id;
+    // delete[] base64id;
     return dest_route->get_key_hexdigest();
 }
 

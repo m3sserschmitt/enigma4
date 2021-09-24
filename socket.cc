@@ -10,11 +10,11 @@
 
 int Socket::create_connection(const std::string &host, const std::string &port)
 {
-    if(this->fd > 0)
+    if (this->fd > 0)
     {
         return -1;
     }
-    
+
     int s;
 
     addrinfo addr_info;
@@ -80,7 +80,7 @@ ssize_t Socket::read_buffer(MessageParser &mp)
 
 ssize_t Socket::read_data()
 {
-    return read(this->fd, this->buffer + (this->delta > 0 ? this->delta : 0), O_SOCKET_MAX_BUFFER_SIZE);
+    return read(this->fd, this->buffer + (this->delta > 0 ? this->delta : 0), SOCKET_MAX_BUFFER_SIZE);
 }
 
 ssize_t Socket::read_data(MessageParser &mp)
@@ -128,11 +128,11 @@ ssize_t Socket::read_data(MessageParser &mp)
 
 const Socket &Socket::operator=(const Socket &s)
 {
-    if(this != &s)
+    if (this != &s)
     {
         delete[] this->buffer;
-        this->buffer = new BYTE[O_SOCKET_MAX_BUFFER_SIZE];
-        memcpy(this->buffer, s.buffer, O_SOCKET_MAX_BUFFER_SIZE);
+        this->buffer = new BYTE[SOCKET_MAX_BUFFER_SIZE];
+        memcpy(this->buffer, s.buffer, SOCKET_MAX_BUFFER_SIZE);
         this->delta = s.delta;
         this->fd = s.fd;
     }

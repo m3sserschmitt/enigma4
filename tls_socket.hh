@@ -14,8 +14,6 @@ class TLSSocket : public Socket
     int ssl_wrap_fd();
 
     ssize_t read_data();
-    ssize_t write_data(const MessageBuilder &mb) const;
-    ssize_t write_data(const BYTE *data, SIZE datalen) const;
 
     TLSSocket(const TLSSocket &s);
     const TLSSocket &operator=(const TLSSocket &);
@@ -32,6 +30,11 @@ public:
         this->ssl_init();
         this->ssl_wrap_fd();
     }
+    ~TLSSocket()
+    {
+        SSL_CTX_free(ctx);
+        SSL_free(ssl);
+    }
 
     int create_connection(const std::string &host, const std::string &port)
     {
@@ -42,14 +45,17 @@ public:
 
         return this->ssl_wrap_fd();
     }
-
-    const CHAR *get_cipher() const { return SSL_get_cipher(ssl); };
-
+    
     void wrap(int fd)
     {
         Socket::wrap(fd);
         this->ssl_wrap_fd();
     };
+
+    ssize_t write_data(const MessageBuilder &mb) const;
+    ssize_t write_data(const BYTE *data, SIZE datalen) const;
+
+    const CHAR *get_cipher() const { return SSL_get_cipher(ssl); };
 };
 
 #endif

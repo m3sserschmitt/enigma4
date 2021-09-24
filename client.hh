@@ -53,7 +53,6 @@ class Client
         {
             return CRYPTO::AES_ctx_dup(this->aesctx, route->aesctx);
         }
-
         int aesctx_dup(AES_CRYPTO ctx) 
         {
             return CRYPTO::AES_ctx_dup(this->aesctx, ctx);

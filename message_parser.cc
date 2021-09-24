@@ -58,7 +58,7 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
     return 0;
 }
 
-int MessageParser::decrypt(Session *session)
+int MessageParser::decrypt(SessionManager *session)
 {
     this->remove_id();
     AES_CRYPTO ctx = session->get_ctx((*this)["id"]);
@@ -75,7 +75,7 @@ int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
 
     this->remove_id();
 
-    BYTES payload = this->get_payload_ptr();
+    BYTES ptr = this->get_payload_ptr();
     SIZE payload_size = this->get_payload_size();
 
     BYTES key = 0;
@@ -86,14 +86,13 @@ int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
 
     int ret = 0;
 
-    if ((decrlen = CRYPTO::RSA_decrypt(rsactx, payload, 512, &key)) < 0)
+    if ((decrlen = CRYPTO::RSA_decrypt(rsactx, ptr, MESSAGE_ENC_PUBKEY_SIZE, &key)) < 0)
     {
         ret = -1;
         goto endfunc;
     }
 
-    payload += 512;
-    payload_size -= 512;
+    ptr += 512;
 
     if (CRYPTO::AES_setup_key(key, decrlen, aesctx) < 0 or CRYPTO::AES_init(0, 0, 0, 0, aesctx) < 0)
     {
@@ -101,7 +100,7 @@ int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
         goto endfunc;
     }
 
-    if ((decrlen = CRYPTO::AES_decrypt(aesctx, payload, payload_size, &data)) < 0)
+    if ((decrlen = CRYPTO::AES_decrypt(aesctx, ptr, payload_size - MESSAGE_ENC_PUBKEY_SIZE, &data)) < 0)
     {
         ret = -1;
         goto endfunc;
@@ -110,14 +109,11 @@ int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
     data[decrlen] = 0;
     this->parse((const CHAR *)data);
 
-    if(not this->key_exists("pubkey"))
+    if (this->key_exists("pubkey"))
     {
-        ret = -1;
-        goto endfunc;
+        KEY_UTIL::get_key_hexdigest((*this)["pubkey"], pubkey_hexdigest);
+        (*this)["address"] = pubkey_hexdigest;
     }
-
-    KEY_UTIL::get_key_hexdigest((*this)["pubkey"], pubkey_hexdigest);
-    (*this)["address"] = pubkey_hexdigest;
 
 endfunc:
 

@@ -87,7 +87,7 @@ public:
     }
 
     int decrypt(AES_CRYPTO ctx);
-    int decrypt(Session *s);
+    int decrypt(SessionManager *s);
 
     int handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
 
