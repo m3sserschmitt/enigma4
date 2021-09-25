@@ -20,6 +20,9 @@ class Socket
     ssize_t read_buffer(MessageParser &mp);
     virtual ssize_t read_data();
 
+    Socket(const Socket &);
+    const Socket &operator=(const Socket &s);
+
 protected:
     BYTES get_buffer() { return this->buffer; };
 
@@ -39,12 +42,7 @@ public:
     {
         this->create_connection(host, port);
     };
-    Socket(const Socket &s) : fd(s.fd),
-                              buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
-                              delta(s.delta)
-    {
-        memcpy(this->buffer, s.buffer, SOCKET_MAX_BUFFER_SIZE);
-    }
+    
     virtual ~Socket()
     {
         delete[] buffer;
@@ -67,7 +65,6 @@ public:
     virtual const CHAR *get_cipher() const { return "(NONE)"; }
     static SIZE get_max_socket_buff_read() { return SOCKET_MAX_BUFFER_SIZE; }
 
-    const Socket &operator=(const Socket &s);
 };
 
 #endif

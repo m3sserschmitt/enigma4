@@ -1,6 +1,7 @@
 #include "server.hh"
 #include "onion_routing.hh"
 #include "cmd.hh"
+#include "debug.hh"
 
 #include <iostream>
 
@@ -13,7 +14,7 @@ int main(int argc, char **argv)
 
     if (not pubkey)
     {
-        cout << "[-] Error: server public key is missing.\n";
+        ERROR("Server public key is missing.");
         return EXIT_FAILURE;
     }
 
@@ -21,7 +22,7 @@ int main(int argc, char **argv)
 
     if (not privkey)
     {
-        cout << "[-] Error: server private key is missing.\n";
+        ERROR("Server private key is missing.");
         return EXIT_FAILURE;
     }
 
@@ -29,7 +30,7 @@ int main(int argc, char **argv)
 
     if (not host)
     {
-        cout << "[-] Warning: no host provided; listening on localhost.\n";
+        WARNING("No host provided; listening on localhost.");
         host = "localhost";
     }
 
@@ -37,7 +38,7 @@ int main(int argc, char **argv)
 
     if (not port)
     {
-        cout << "[-] Warning: no port provided; listening on 8080.\n";
+        WARNING("No port provided; listening on 8080.");
         port = "8080";
     }
 
@@ -55,13 +56,13 @@ int main(int argc, char **argv)
 
     if (server->socket_bind() < 0)
     {
-        cout << "[-] Bind error\n";
-
+        ERROR("Binding error.");
         return EXIT_FAILURE;
     }
 
-    cout << "[+] Local address: " << app.get_address() << "\n";
-    cout << "[+] Listening on " << host << ":" << port << "\n";
+    INFO("Local address: " << app.get_address());
+    INFO("Listening on " << host << ":" << port);
+    
     server->accept_clients();
 
     return EXIT_SUCCESS;

@@ -17,6 +17,7 @@
 #include <cryptography/random.hh>
 #include <cryptography/base64.hh>
 #include <iostream>
+#include "debug.hh"
 
 #include "message_const.hh"
 
@@ -94,6 +95,8 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
     mp.remove_id();
     Route *route = (*routes)[mp["id"]];
 
+    INFO("Session ID: " << mp["id"]);
+
     if ((not route or mp.decrypt(route->get_aesctx()) < 0))
     {
         return -1;
@@ -117,18 +120,22 @@ void *Client::data_listener(void *args)
 
     while (sock->read_data(mp) > 0)
     {
-        cout << "\n[+] Data received: " << mp.get_datalen() << " bytes.\n";
+        NEWLINE();
+        INFO("Data received: " << mp.get_datalen() << " bytes.");
 
         if (mp.is_handshake())
         {
-            cout << "\n[+] Handshake received\n";
+            NEWLINE();
+            INFO("Handshake received.");
+
             if (setup_session_from_handshake(mp, rsactx, routes, aesctx) < 0)
             {
-                cout << "[+] Handshake failed\n";
+                FAILED("Handshake failed.");
                 continue;
             }
 
-            cout << "[+] Handshake completed\n";
+            INFO("Handshake completed.");
+            INFO("Session ID: " << mp["id"]);
 
             continue;
         }
@@ -138,8 +145,11 @@ void *Client::data_listener(void *args)
             continue;
         }
 
-        cout << "[+] Destination: " << mp["next"] << "\n";
-        cout << "\nMessage: " << mp.get_payload() << "\n";
+        INFO("Destination: " << mp["next"]);
+        NEWLINE();
+        INFO("Message content: " << mp.get_payload());
+
+        cout << mp.get_payload();
     }
 
     return 0;

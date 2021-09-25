@@ -1,6 +1,7 @@
 #include "onion_routing.hh"
 #include "message_parser.hh"
 #include "util.hh"
+#include "debug.hh"
 
 #include <iostream>
 #include <unistd.h>
@@ -20,10 +21,9 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
 
     PLAINTEXT key = (PLAINTEXT)read_file(pubkey_file, "rb");
 
-    cout << "[+] pubkey init: " << CRYPTO::RSA_init_key(key, 0, 0, PUBLIC_KEY, this->rsactx) << "\n";
-    cout << "[+] privkey init: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx) << "\n";
-
-    cout << "[+] RSA decr init: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT) << "\n";
+    // INFO("Pubkey init: " << CRYPTO::RSA_init_key(key, 0, 0, PUBLIC_KEY, this->rsactx));
+    INFO("Privkey init: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx));
+    INFO("RSA decr init: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT));
 
     KEY_UTIL::get_key_hexdigest(key, this->address);
 }
@@ -42,13 +42,18 @@ int OnionRoutingApp::try_handshake(MessageParser &mp, Connection *conn)
         return -1;
     }
 
+    NEWLINE();
+    INFO("Handshake received.");
+
     if (conn->session->setup(OnionRoutingApp::rsactx, mp) < 0)
     {
-        cout << "\n[+] Handshake failed\n";
+        INFO("Handshake failed.");
         return -1;
     }
 
-    cout << "\n[+] Handshake completed: " << mp["address"] << "\n";
+    INFO("Handshake completed: " << mp["address"]);
+    INFO("Session ID: " << mp["id"]);
+
     OnionRoutingApp::clients.insert(pair<string, Connection *>(mp["address"], conn));
 
     return 0;
@@ -59,14 +64,15 @@ int OnionRoutingApp::forward_message(MessageParser &mp)
     mp.remove_next();
     map<string, Connection *>::iterator next = clients.find(mp["next"]);
 
-    cout << "[+] Next: " << mp["next"] << "\n";
+    INFO("Next address: " << mp["next"]);
 
     if (next == clients.end())
     {
+        FAILED("Address not found: " << mp["next"]);
         return -1;
     }
 
-    cout << "[+] Forwarding to " << next->first << "\n";
+    INFO("Forwarding to " << next->first);
 
     return next->second->write_data(mp.get_data(), mp.get_datalen()) > 0 ? 0 : -1;
 }
@@ -84,8 +90,10 @@ int OnionRoutingApp::redirect(Connection *const conn)
             continue;
         }
 
-        cout << "\n[+] Data received: " << mp.get_datalen() << " bytes\n";
-        cout << "[+] Decryption: " << mp.decrypt(conn->session) << "\n";
+        NEWLINE();
+        INFO("Data received: " << mp.get_datalen() << " bytes");
+        INFO("Decryption: " << mp.decrypt(conn->session));
+        INFO("Session id: " << mp["id"]);
 
         forward_message(mp);
 

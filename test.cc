@@ -1,75 +1,76 @@
-#include <stdio.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <string.h>
-#include "tls_socket.hh"
+// #include <stdio.h>
+// #include <sys/socket.h>
+// #include <netinet/in.h>
+// #include <arpa/inet.h>
+// #include <openssl/ssl.h>
+// #include <openssl/err.h>
+// #include <string.h>
+// #include "tls_socket.hh"
 #include <iostream>
+// #include <stdarg.h>
 
 using namespace std;
 
-SSL *ssl;
+// SSL *ssl;
 // int sock;
 
-int RecvPacket()
-{
-    int len = 100;
-    char buf[1000000];
-    do
-    {
-        len = SSL_read(ssl, buf, 100);
-        buf[len] = 0;
-        printf("%s\n", buf);
-        //        fprintf(fp, "%s",buf);
-    } while (len > 0);
-    if (len < 0)
-    {
-        int err = SSL_get_error(ssl, len);
-        if (err == SSL_ERROR_WANT_READ)
-            return 0;
-        if (err == SSL_ERROR_WANT_WRITE)
-            return 0;
-        if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL || err == SSL_ERROR_SSL)
-            return -1;
-    }
-}
+// int RecvPacket()
+// {
+//     int len = 100;
+//     char buf[1000000];
+//     do
+//     {
+//         len = SSL_read(ssl, buf, 100);
+//         buf[len] = 0;
+//         printf("%s\n", buf);
+//         //        fprintf(fp, "%s",buf);
+//     } while (len > 0);
+//     if (len < 0)
+//     {
+//         int err = SSL_get_error(ssl, len);
+//         if (err == SSL_ERROR_WANT_READ)
+//             return 0;
+//         if (err == SSL_ERROR_WANT_WRITE)
+//             return 0;
+//         if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL || err == SSL_ERROR_SSL)
+//             return -1;
+//     }
+// }
 
-int SendPacket(const char *buf)
-{
-    int len = SSL_write(ssl, buf, strlen(buf));
-    if (len < 0)
-    {
-        int err = SSL_get_error(ssl, len);
-        switch (err)
-        {
-        case SSL_ERROR_WANT_WRITE:
-            return 0;
-        case SSL_ERROR_WANT_READ:
-            return 0;
-        case SSL_ERROR_ZERO_RETURN:
-        case SSL_ERROR_SYSCALL:
-        case SSL_ERROR_SSL:
-        default:
-            return -1;
-        }
-    }
-}
+// int SendPacket(const char *buf)
+// {
+//     int len = SSL_write(ssl, buf, strlen(buf));
+//     if (len < 0)
+//     {
+//         int err = SSL_get_error(ssl, len);
+//         switch (err)
+//         {
+//         case SSL_ERROR_WANT_WRITE:
+//             return 0;
+//         case SSL_ERROR_WANT_READ:
+//             return 0;
+//         case SSL_ERROR_ZERO_RETURN:
+//         case SSL_ERROR_SYSCALL:
+//         case SSL_ERROR_SSL:
+//         default:
+//             return -1;
+//         }
+//     }
+// }
 
-void log_ssl()
-{
-    int err;
-    while (err = ERR_get_error())
-    {
-        char *str = ERR_error_string(err, 0);
-        if (!str)
-            return;
-        printf(str);
-        printf("\n");
-        fflush(stdout);
-    }
-}
+// void log_ssl()
+// {
+//     int err;
+//     while (err = ERR_get_error())
+//     {
+//         char *str = ERR_error_string(err, 0);
+//         if (!str)
+//             return;
+//         printf(str);
+//         printf("\n");
+//         fflush(stdout);
+//     }
+// }
 
 // int main(int argc, char *argv[])
 // {
@@ -117,10 +118,38 @@ void log_ssl()
 //     return 0;
 // }
 
+// #define __PRINTLINE(arg) cout << arg;
+
+#define DEBUG_OFF
+
+struct stream
+{
+    template <class T>
+    friend stream &operator<<(stream &s, const T &p)
+    {
+#ifndef DEBUG_OFF
+        cout << p;
+#endif
+        return s;
+    }
+
+    template <class T>
+    friend stream &operator<<(stream &s, const T *p)
+    {
+#ifndef DEBUG_OFF
+        cout << p;
+#endif
+        return s;
+    }
+};
+
+#define PRINTLINE(x) \
+    stream dummy;    \
+    dummy << x;
+
 int main()
 {
-    Socket *s = new TLSSocket;
-    s->create_connection("google.ro", "443");
+    PRINTLINE(1 << " hello" << 1.34);
 
-    cout << s->get_cipher() << "\n";
+    return 0;
 }

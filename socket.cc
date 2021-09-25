@@ -125,17 +125,3 @@ ssize_t Socket::read_data(MessageParser &mp)
 
     return inlen < 0 ? -1 : parsed;
 }
-
-const Socket &Socket::operator=(const Socket &s)
-{
-    if (this != &s)
-    {
-        delete[] this->buffer;
-        this->buffer = new BYTE[SOCKET_MAX_BUFFER_SIZE];
-        memcpy(this->buffer, s.buffer, SOCKET_MAX_BUFFER_SIZE);
-        this->delta = s.delta;
-        this->fd = s.fd;
-    }
-
-    return *this;
-}
