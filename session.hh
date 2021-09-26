@@ -35,6 +35,14 @@ public:
     AES_CRYPTO get_ctx(const std::string &id) { return this->keys[id]; }
 
     void set(const std::string &id, AES_CRYPTO aesctx) { this->keys[id] = aesctx; }
+    void cleanup(const std::string &id)
+    {
+        
+    }
+    AES_CRYPTO operator[](const std::string &id)
+    {
+        return this->keys[id];
+    }
 };
 
 #endif

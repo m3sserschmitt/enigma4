@@ -60,10 +60,17 @@ int main(int argc, char **argv)
     while (dest_address.size())
     {
         cout << "[+] Enter message: ";
-        cin >> input;
+        getline(cin, input);
+
+        if(not input.size())
+        {
+            break;
+        }
 
         client.write_data((BYTES)input.c_str(), input.size(), dest_address);
     }
+
+    client.exit_circuit(dest_address);
 
     return 0;
 }

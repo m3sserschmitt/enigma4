@@ -9,8 +9,6 @@
 
 using namespace std;
 
-extern int hex(BYTES in, SIZE inlen, PLAINTEXT *out);
-
 std::map<string, Connection *> OnionRoutingApp::clients;
 RSA_CRYPTO OnionRoutingApp::rsactx;
 string OnionRoutingApp::address;
@@ -21,7 +19,6 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
 
     PLAINTEXT key = (PLAINTEXT)read_file(pubkey_file, "rb");
 
-    // INFO("Pubkey init: " << CRYPTO::RSA_init_key(key, 0, 0, PUBLIC_KEY, this->rsactx));
     INFO("Privkey init: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx));
     INFO("RSA decr init: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT));
 
@@ -45,14 +42,13 @@ int OnionRoutingApp::try_handshake(MessageParser &mp, Connection *conn)
     NEWLINE();
     INFO("Handshake received.");
 
-    if (conn->session->setup(OnionRoutingApp::rsactx, mp) < 0)
+    if (conn->add_session(mp, OnionRoutingApp::rsactx) < 0)
     {
         INFO("Handshake failed.");
         return -1;
     }
 
-    INFO("Handshake completed: " << mp["address"]);
-    INFO("Session ID: " << mp["id"]);
+    INFO("Handshake completed: " << mp["address"] << "; session ID: " << mp["id"]);
 
     OnionRoutingApp::clients.insert(pair<string, Connection *>(mp["address"], conn));
 
@@ -64,7 +60,7 @@ int OnionRoutingApp::forward_message(MessageParser &mp)
     mp.remove_next();
     map<string, Connection *>::iterator next = clients.find(mp["next"]);
 
-    INFO("Next address: " << mp["next"]);
+    INFO("Next address: " << mp["next"] << "; session ID: " << mp["id"]);
 
     if (next == clients.end())
     {
@@ -77,25 +73,41 @@ int OnionRoutingApp::forward_message(MessageParser &mp)
     return next->second->write_data(mp.get_data(), mp.get_datalen()) > 0 ? 0 : -1;
 }
 
+int OnionRoutingApp::action(MessageParser &mp, Connection *conn)
+{
+    if (try_handshake(mp, conn) == 0)
+    {
+        return 0;
+    }
+
+    if (mp.decrypt(conn->sessions) < 0)
+    {
+        return -1;
+    }
+
+    INFO("Message decrypted successfully.");
+
+    if (mp.is_exit())
+    {
+        INFO("EXIT received for session ID: " << mp["id"]);
+        conn->sessions->cleanup(mp["id"]);
+    }
+
+    forward_message(mp);
+
+    return 0;
+}
+
 int OnionRoutingApp::redirect(Connection *const conn)
 {
     MessageParser mp;
 
     while (conn->read_data(mp) > 0)
     {
-        if (try_handshake(mp, conn) == 0)
-        {
-            mp.clear();
-
-            continue;
-        }
-
         NEWLINE();
         INFO("Data received: " << mp.get_datalen() << " bytes");
-        INFO("Decryption: " << mp.decrypt(conn->session));
-        INFO("Session id: " << mp["id"]);
 
-        forward_message(mp);
+        action(mp, conn);
 
         mp.clear();
     }

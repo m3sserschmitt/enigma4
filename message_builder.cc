@@ -20,7 +20,10 @@ int MessageBuilder::encrypt(AES_CRYPTO ctx)
     }
 
     this->set_payload(out, result);
-    this->set_enc_algorithm(MESSAGE_ENC_ALGORITHM_AES);
+    if(not this->is_exit())
+    {
+        this->set_message_type(MESSAGE_ENC_AES);
+    }
 
     delete[] out;
     return 0;
@@ -63,12 +66,12 @@ int MessageBuilder::handshake(AES_CRYPTO aesctx, RSA_CRYPTO rsactx, const string
     }
 
     this->append_payload_end(encrdata, encrlen);
-    this->set_enc_algorithm(MESSAGE_HANDSHAKE);
+    this->set_message_type(MESSAGE_HANDSHAKE);
 
 endfunc:
     delete[] key;
     delete[] encrkey;
-    delete[] encrdata;    
+    delete[] encrdata;
 
     return ret;
 }

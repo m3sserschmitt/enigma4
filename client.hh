@@ -45,6 +45,16 @@ class Client
             memset(this->key_hexdigest, 0, 64 + 1);
             memset(this->id, 0, 16 + 1);
         }
+        ~Route()
+        {
+            delete[] this->keydigest;
+            delete[] this->key_hexdigest;
+            delete[] this->id;
+
+            this->keydigest = 0;
+            this->key_hexdigest = 0;
+            this->id = 0;
+        }
 
         AES_CRYPTO get_aesctx() { return this->aesctx; }
         RSA_CRYPTO get_rsactx() { return this->rsactx; }
@@ -53,7 +63,7 @@ class Client
         {
             return CRYPTO::AES_ctx_dup(this->aesctx, route->aesctx);
         }
-        int aesctx_dup(AES_CRYPTO ctx) 
+        int aesctx_dup(AES_CRYPTO ctx)
         {
             return CRYPTO::AES_ctx_dup(this->aesctx, ctx);
         }
@@ -111,16 +121,17 @@ class Client
         void set_previous(Route *previous) { this->previous = previous; }
         Route *get_previous() { return this->previous; }
 
-        void set_next(Route *next) {this->next = next;}
+        void set_next(Route *next) { this->next = next; }
         Route *get_next() { return this->next; }
     };
 
     struct listener_data
     {
         Socket *sock;
-        std::map<std::string, Route *> *routes;
         RSA_CRYPTO rsactx;
         AES_CRYPTO aesctx;
+        std::string client_address;
+        std::map<std::string, Route *> *routes;
     };
 
     Socket *sock;
@@ -133,16 +144,20 @@ class Client
 
     RSA_CRYPTO rsactx;
 
-    int handshake(Route *route);
+    virtual int setup_socket(const std::string &host, const std::string &port);
 
-    int write_dest(MessageBuilder &mb, Route *route, bool f = 1);
+    const std::string setup_dest(const std::string &keyfile, Route **route, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
+
+    int handshake(Route *route);
+    int handshake(const std::string &address);
 
     static int setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx);
+    static int action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, std::map<std::string, Route *> *routes);
+
     static int decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes);
     static void *data_listener(void *node);
 
-    virtual int setup_socket(const std::string &host, const std::string &port);
-    const std::string setup_dest(const std::string &keyfile, Route **route, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
+    int write_dest(MessageBuilder &mb, Route *route, bool f = 1);
 
     Client(const Client &c);
     const Client &operator=(const Client &c);
@@ -151,15 +166,15 @@ public:
     Client(const std::string &pubkey, const std::string &privkey);
 
     const std::string &get_client_hexaddress() const { return this->hexaddress; }
+    const std::string get_server_address() const { return this->serv->get_key_hexdigest(); }
 
     int create_connection(const std::string &host, const std::string &port, const std::string &keyfile);
-    int handshake(const std::string &address);
-
-    const std::string get_server_address() const { return this->serv->get_key_hexdigest(); }
 
     const std::string add_node(const std::string &keyfile, const std::string &last_address);
 
     int write_data(const BYTE *data, SIZE datalen, const std::string &address);
+
+    int exit_circuit(const std::string &address);
 
     const Socket *get_socket() { return this->sock; }
     void set_socket(Socket *s) { this->sock = s; }

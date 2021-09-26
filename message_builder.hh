@@ -57,6 +57,7 @@ public:
     // int encrypt(RSA_CRYPTO ctx);
 
     int handshake(AES_CRYPTO aesctx, RSA_CRYPTO rsactx, const std::string &pubkeypem);
+    void exit_circuit() { this->set_message_type(MESSAGE_EXIT); };
 
     MessageBuilder &operator=(const MessageBuilder &mb);
 };

@@ -24,6 +24,8 @@ class OnionRoutingApp : public App
 
     static int setup_session(MessageParser &mp, Connection *conn);
     static int try_handshake(MessageParser &mp, Connection *conn);
+    static int action(MessageParser &mp, Connection *conn);
+    
     static int forward_message(MessageParser &mp);
 
     static int redirect(Connection *const conn);

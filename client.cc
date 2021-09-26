@@ -107,14 +107,58 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
     return 0;
 }
 
+int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<string, Route *> *routes)
+{
+    if (mp.is_handshake())
+    {
+        NEWLINE();
+        INFO("Handshake received.");
+
+        if (setup_session_from_handshake(mp, rsactx, routes, aesctx) < 0)
+        {
+            FAILED("Handshake failed.");
+            return 0;
+        }
+
+        INFO("Handshake completed.");
+        INFO("Session ID: " << mp["id"]);
+
+        return 0;
+    }
+    else if (mp.is_exit())
+    {
+        mp.remove_id();
+        
+        string id = mp["id"];
+
+        INFO("EXIT received for session ID: " << id);
+
+        Route *route = (*routes)[id];
+        delete route;
+
+        routes->erase(id);
+
+        INFO("Session with ID " << id << " erased.");
+
+        return 0;
+    }
+
+    return -1;
+}
+
 void *Client::data_listener(void *args)
 {
     listener_data *listener = (listener_data *)args;
 
     Socket *sock = listener->sock;
+
     map<string, Route *> *routes = listener->routes;
+
     RSA_CRYPTO rsactx = listener->rsactx;
     AES_CRYPTO aesctx = listener->aesctx;
+
+    string client_address = listener->client_address;
+    string next_address;
 
     MessageParser mp;
 
@@ -123,20 +167,8 @@ void *Client::data_listener(void *args)
         NEWLINE();
         INFO("Data received: " << mp.get_datalen() << " bytes.");
 
-        if (mp.is_handshake())
+        if (action(mp, rsactx, aesctx, routes) == 0)
         {
-            NEWLINE();
-            INFO("Handshake received.");
-
-            if (setup_session_from_handshake(mp, rsactx, routes, aesctx) < 0)
-            {
-                FAILED("Handshake failed.");
-                continue;
-            }
-
-            INFO("Handshake completed.");
-            INFO("Session ID: " << mp["id"]);
-
             continue;
         }
 
@@ -145,11 +177,10 @@ void *Client::data_listener(void *args)
             continue;
         }
 
-        INFO("Destination: " << mp["next"]);
-        NEWLINE();
-        INFO("Message content: " << mp.get_payload());
+        next_address = mp["next"];
 
-        cout << mp.get_payload();
+        INFO("Destination: " << next_address << (next_address == client_address ? " -> Match!" : " -> Don't match !!"));
+        INFO("Message content: " << mp.get_payload());
     }
 
     return 0;
@@ -274,6 +305,7 @@ int Client::create_connection(const string &host, const string &port, const stri
     listener->sock = this->sock;
     listener->rsactx = this->rsactx;
     listener->aesctx = this->serv->get_aesctx();
+    listener->client_address = this->hexaddress;
 
     pthread_t new_thread;
     pthread_create(&new_thread, 0, this->data_listener, listener);
@@ -332,6 +364,21 @@ int Client::handshake(Route *route)
 int Client::handshake(const string &dest)
 {
     return this->handshake(routes[dest]);
+}
+
+int Client::exit_circuit(const string &address)
+{
+    Route *route = this->routes[address];
+
+    if (not route)
+    {
+        return -1;
+    }
+
+    MessageBuilder mb;
+    mb.exit_circuit();
+
+    return this->write_dest(mb, route);
 }
 
 int Client::write_data(const BYTE *data, SIZE datalen, const string &address)

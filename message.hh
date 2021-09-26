@@ -12,7 +12,7 @@ class Message
     SIZE datalen;
 
 protected:
-    BYTES get_enc_algorithm_ptr() const
+    BYTES get_message_type_ptr() const
     {
         return this->data + MESSAGE_ENC_ALGORITHM_OFFSET;
     }
@@ -31,7 +31,7 @@ protected:
         (this->data + MESSAGE_SIZE_SECTION_OFFSET)[1] = size;
         this->datalen = size + MESSAGE_HEADER_SIZE;
     }
-    void set_enc_algorithm(int algorithm)
+    void set_message_type(int algorithm)
     {
         *(this->data + MESSAGE_ENC_ALGORITHM_OFFSET) = algorithm;
     }
@@ -65,12 +65,12 @@ public:
 
     virtual ~Message() = 0;
 
-    int get_enc_algorithm() const 
+    int get_message_type() const
     {
-        return *this->get_enc_algorithm_ptr();
+        return *this->get_message_type_ptr();
     }
 
-    const BYTE *get_payload(SIZE &payloadlen) const 
+    const BYTE *get_payload(SIZE &payloadlen) const
     {
         payloadlen = this->get_payload_size();
         return this->get_payload_ptr();
@@ -100,8 +100,9 @@ public:
         this->set_payload(data.c_str());
     }
 
-    bool is_handshake() const { return this->get_enc_algorithm() == MESSAGE_HANDSHAKE; }
-
+    bool is_handshake() const { return this->get_message_type() == MESSAGE_HANDSHAKE; }
+    bool is_exit() const { return this->get_message_type() == MESSAGE_EXIT; }
+    
     const BYTE *get_data(SIZE &datalen) const
     {
         datalen = this->datalen;
