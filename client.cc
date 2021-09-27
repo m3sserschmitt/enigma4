@@ -23,44 +23,6 @@
 
 using namespace std;
 
-int Client::Route::aesctx_init(const BYTE *key, SIZE keylen)
-{
-    if (key and keylen)
-    {
-        return CRYPTO::AES_setup_key(key, keylen, this->aesctx);
-    }
-    else
-    {
-        BYTES _key = 0;
-        BYTES _salt = 0;
-        int ret = 0;
-
-        if (CRYPTO::rand_bytes(32, &_key) < 0)
-        {
-            ret = -1;
-            goto __end;
-        }
-
-        if (CRYPTO::rand_bytes(32, &_salt) < 0)
-        {
-            ret = -1;
-            goto __end;
-        }
-
-        if (CRYPTO::AES_init(_key, 32, _salt, 100000, this->aesctx) < 0)
-        {
-            ret = -1;
-            goto __end;
-        }
-
-    __end:
-        delete[] _key;
-        delete[] _salt;
-
-        return ret;
-    }
-}
-
 Client::Client(const string &pubkey, const string &privkey)
 {
     this->pubkey = (PLAINTEXT)read_file(pubkey, "rb");
@@ -85,7 +47,7 @@ int Client::setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, s
         return -1;
     }
 
-    routes->insert(pair<string, Route *>(mp["id"], newroute));
+    routes->insert(pair<string, Route *>(mp.get_parsed_id(), newroute));
 
     return 0;
 }
@@ -93,11 +55,11 @@ int Client::setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, s
 int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<string, Route *> *routes)
 {
     mp.remove_id();
-    Route *route = (*routes)[mp["id"]];
+    Route *route = (*routes)[mp.get_parsed_id()];
 
-    INFO("Session ID: " << mp["id"]);
+    INFO("Session ID: " << mp.get_parsed_id());
 
-    if ((not route or mp.decrypt(route->get_aesctx()) < 0))
+    if ((not route or mp.decrypt(route) < 0))
     {
         return -1;
     }
@@ -121,7 +83,7 @@ int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<
         }
 
         INFO("Handshake completed.");
-        INFO("Session ID: " << mp["id"]);
+        INFO("Session ID: " << mp.get_parsed_id());
 
         return 0;
     }
@@ -129,7 +91,7 @@ int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<
     {
         mp.remove_id();
         
-        string id = mp["id"];
+        string id = mp.get_parsed_id();
 
         INFO("EXIT received for session ID: " << id);
 
@@ -164,23 +126,29 @@ void *Client::data_listener(void *args)
 
     while (sock->read_data(mp) > 0)
     {
+        mp.remove_id();
+
         NEWLINE();
-        INFO("Data received: " << mp.get_datalen() << " bytes.");
+        INFO("Data received: " << mp.get_datalen() << " bytes; session ID: " << mp.get_parsed_id());
 
         if (action(mp, rsactx, aesctx, routes) == 0)
         {
+            mp.clear();
             continue;
         }
 
         if (decrypt_incoming_message(mp, rsactx, routes) < 0)
         {
+            mp.clear();
             continue;
         }
 
-        next_address = mp["next"];
+        next_address = mp.get_parsed_next_address();
 
         INFO("Destination: " << next_address << (next_address == client_address ? " -> Match!" : " -> Don't match !!"));
         INFO("Message content: " << mp.get_payload());
+
+        mp.clear();
     }
 
     return 0;

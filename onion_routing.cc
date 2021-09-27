@@ -48,9 +48,9 @@ int OnionRoutingApp::try_handshake(MessageParser &mp, Connection *conn)
         return -1;
     }
 
-    INFO("Handshake completed: " << mp["address"] << "; session ID: " << mp["id"]);
+    INFO("Handshake completed: " << mp.get_parsed_address() << "; session ID: " << mp.get_parsed_id());
 
-    OnionRoutingApp::clients.insert(pair<string, Connection *>(mp["address"], conn));
+    OnionRoutingApp::clients.insert(pair<string, Connection *>(mp.get_parsed_address(), conn));
 
     return 0;
 }
@@ -58,13 +58,15 @@ int OnionRoutingApp::try_handshake(MessageParser &mp, Connection *conn)
 int OnionRoutingApp::forward_message(MessageParser &mp)
 {
     mp.remove_next();
-    map<string, Connection *>::iterator next = clients.find(mp["next"]);
+    string next_address = mp.get_parsed_next_address();
 
-    INFO("Next address: " << mp["next"] << "; session ID: " << mp["id"]);
+    map<string, Connection *>::iterator next = clients.find(next_address);
+
+    INFO("Next address: " << next_address << "; session ID: " << mp.get_parsed_id());
 
     if (next == clients.end())
     {
-        FAILED("Address not found: " << mp["next"]);
+        FAILED("Address not found: " << next_address);
         return -1;
     }
 
@@ -89,8 +91,8 @@ int OnionRoutingApp::action(MessageParser &mp, Connection *conn)
 
     if (mp.is_exit())
     {
-        INFO("EXIT received for session ID: " << mp["id"]);
-        conn->sessions->cleanup(mp["id"]);
+        INFO("EXIT received for session ID: " << mp.get_parsed_id());
+        conn->sessions->cleanup(mp.get_parsed_id());
     }
 
     forward_message(mp);
@@ -126,6 +128,7 @@ void *OnionRoutingApp::new_thread(void *args)
 
     redirect(conn);
 
+    clients.erase(conn->get_address());
     delete conn;
 
     return 0;

@@ -30,12 +30,17 @@ public:
 
     int add_session(MessageParser &mp, RSA_CRYPTO ctx)
     {
-        this->sessions->setup(ctx, mp);
+        if (this->sessions->setup(ctx, mp) < 0)
+        {
+            return -1;
+        }
 
         if (mp.key_exists("address"))
         {
-            this->address = mp["address"];
+            this->address = mp.get_parsed_address();
         }
+
+        return 0;
     }
 
     const std::string &get_address() const { return this->address; }

@@ -7,6 +7,8 @@
 #include <cryptography/cryptography.hh>
 #include <math.h>
 #include "session.hh"
+#include "util.hh"
+#include "route.hh"
 
 #include "message.hh"
 
@@ -34,6 +36,8 @@ class MessageParser : public Message
 
         return payload_size;
     }
+
+    int decrypt(AES_CRYPTO ctx);
 
     void parse(const CHAR *data);
 
@@ -81,12 +85,20 @@ public:
         return Message::get_payload_size();
     }
 
+    const std::string &get_parsed_id() { return this->parseddata["id"]; }
+    const std::string &get_parsed_address() { return this->parseddata["address"]; }
+    const std::string &get_parsed_next_address() { return this->parseddata["next"]; }
+
+    bool parsed_id_exists() const { return this->key_exists("id"); }
+    bool parsed_address_exists() const { return this->key_exists("address"); }
+    bool parsed_next_address_exists() const { return this->key_exists("next"); }
+
     bool is_complete() const
     {
         return not this->get_required_size();
     }
 
-    int decrypt(AES_CRYPTO ctx);
+    int decrypt(Route *r);
     int decrypt(SessionManager *s);
 
     int handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);

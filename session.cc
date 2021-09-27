@@ -16,7 +16,7 @@ int SessionManager::setup(RSA_CRYPTO rsactx, MessageParser &mp)
 
     mp.handshake(rsactx, ctx);
 
-    this->set(mp["id"], ctx);
+    this->set(mp.get_parsed_id(), ctx);
 
     return 0;
 }

@@ -58,10 +58,18 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
     return 0;
 }
 
+int MessageParser::decrypt(Route *r)
+{
+    this->remove_id();
+    AES_CRYPTO ctx = r->get_aesctx();
+
+    return this->decrypt(ctx);
+}
+
 int MessageParser::decrypt(SessionManager *session)
 {
     this->remove_id();
-    AES_CRYPTO ctx = session->get_ctx((*this)["id"]);
+    AES_CRYPTO ctx = session->get_ctx(this->get_parsed_id());
 
     return this->decrypt(ctx);
 }
@@ -125,10 +133,15 @@ endfunc:
 
 void MessageParser::remove_next()
 {
+    if(this->parsed_next_address_exists())
+    {
+        return;
+    }
+
     PLAINTEXT next = 0;
     CRYPTO::hex(this->get_payload_ptr(), MESSAGE_ADDRESS_SIZE, &next);
 
-    this->parseddata["next"] = string(next);
+    this->parseddata["next"] = next;
     this->remove_payload_beg(MESSAGE_ADDRESS_SIZE);
     this->set_payload_size(this->get_payload_size() - MESSAGE_ADDRESS_SIZE);
 
@@ -137,10 +150,15 @@ void MessageParser::remove_next()
 
 void MessageParser::remove_id()
 {
+    if(this->parsed_id_exists())
+    {
+        return;
+    }
+
     BASE64 id = new CHAR[128];
     CRYPTO::base64_encode(this->get_payload_ptr(), MESSAGE_ID_SIZE, &id);
 
-    this->parseddata["id"] = string(id);
+    this->parseddata["id"] = id;
     this->remove_payload_beg(MESSAGE_ID_SIZE);
     this->set_payload_size(this->get_payload_size() - MESSAGE_ID_SIZE);
 
