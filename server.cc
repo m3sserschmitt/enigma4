@@ -6,94 +6,7 @@
 #include <string.h>
 #include <sys/un.h>
 
-Server::Server() : host(new char[MAX_HOST]),
-                   port(new char[MAX_PORT]),
-                   addrinf(new addrinfo),
-                   backlog(backlog) {}
-
-Server::Server(const char *host,
-               const char *port,
-               const addrinfo *addr_info,
-               int backlog) : host(new char[MAX_HOST]),
-                              port(new char[MAX_PORT]),
-                              addrinf(new addrinfo),
-                              backlog(backlog)
-{
-    host and strcpy(this->host, host);
-    port and strcpy(this->port, port);
-
-    addr_info and memcpy(this->addrinf, addr_info, sizeof(addrinfo));
-}
-
-Server::Server(const Server &s) : host(new char[MAX_HOST]),
-                                  port(new char[MAX_PORT]),
-                                  addrinf(new addrinfo)
-{
-    s.host and strcpy(this->host, s.host);
-    s.port and strcpy(this->port, s.port);
-
-    s.addrinf and memcpy(this->addrinf, s.addrinf, sizeof(addrinfo));
-
-    this->backlog = s.backlog;
-}
-
-Server::~Server()
-{
-    delete this->host;
-    delete this->port;
-    delete this->addrinf;
-}
-
-void Server::set_host(const char *host)
-{
-    host and strcpy(this->host, host);
-}
-
-void Server::set_unix_socket_addr(const char *addr, size_t addrlen)
-{
-    addr and memcpy(this->host, addr, addrlen);
-    this->addrlen = addrlen;
-}
-
-void Server::set_port(const char *port)
-{
-    port and strcpy(this->port, port);
-}
-
-void Server::set_addr_info(const addrinfo *addr)
-{
-    addr and memcpy(this->addrinf, addr, sizeof(addrinfo));
-}
-
-void Server::set_backlog(int backlog)
-{
-    this->backlog = backlog;
-}
-
-void Server::attach(App *app)
-{
-    this->app = app;
-}
-
-const char *Server::get_host() const
-{
-    return this->host;
-}
-
-const char *Server::get_port() const
-{
-    return this->port;
-}
-
-const addrinfo *Server::get_addr_info() const
-{
-    return this->addrinf;
-}
-
-int Server::get_backlog() const
-{
-    return this->backlog;
-}
+using namespace std;
 
 int Server::socket_bind()
 {
@@ -102,17 +15,17 @@ int Server::socket_bind()
     addrinfo *res = new addrinfo;
     addrinfo *p;
 
-    if (not this->host or not this->port or not this->addrinf)
+    if (not this->host.size() or not this->port.size() or not this->addr_info)
     {
         return -1;
     }
 
-    if (getaddrinfo(host, port, this->addrinf, &res) != 0)
+    if (getaddrinfo(host.c_str(), port.c_str(), this->addr_info, &res) != 0)
     {
         return -1;
     }
 
-    for (p = res; p != NULL; p = res->ai_next)
+    for (p = res; p != nullptr; p = res->ai_next)
     {
         if ((this->servsock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
         {
@@ -146,7 +59,7 @@ int Server::unix_socket_bind()
 {
     sockaddr_un addr;
 
-    if (not this->host)
+    if (not this->host.size())
     {
         return -1;
     }
@@ -165,7 +78,7 @@ int Server::unix_socket_bind()
     memset(&addr, 0, sizeof(sockaddr_un));
 
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, this->host, this->addrlen);
+    strncpy(addr.sun_path, this->host.c_str(), this->host.size());
 
     return bind(this->servsock, (sockaddr *)&addr, sizeof(sockaddr_un));
 }
@@ -191,27 +104,4 @@ int Server::accept_clients()
     }
 
     return clientsock;
-}
-
-Server &Server::operator=(const Server &s)
-{
-    if (this != &s)
-    {
-        delete this->host;
-        delete this->port;
-        delete this->addrinf;
-
-        this->host = new char[128];
-        this->port = new char[16];
-        this->addrinf = new addrinfo;
-
-        s.host and strcpy(this->host, s.host);
-        s.port and strcpy(this->port, s.port);
-
-        s.addrinf and memcpy(this->addrinf, s.addrinf, sizeof(addrinfo));
-
-        this->backlog = s.backlog;
-    }
-
-    return *this;
 }

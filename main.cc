@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 
     if (not host)
     {
-        WARNING("No host provided; listening on localhost.");
+        WARNING("No host provided; defaulting to localhost.");
         host = "localhost";
     }
 
@@ -38,21 +38,25 @@ int main(int argc, char **argv)
 
     if (not port)
     {
-        WARNING("No port provided; listening on 8080.");
+        WARNING("No port provided; defaulting to 8080.");
         port = "8080";
     }
 
-    addrinfo *addrinf = new addrinfo;
+    Server *server = new Server(host, port);
 
-    addrinf->ai_family = AF_INET;
-    addrinf->ai_socktype = SOCK_STREAM;
-    addrinf->ai_flags = 0;
-    addrinf->ai_protocol = 0;
+    OnionRoutingApp &app = OnionRoutingApp::create_app(pubkey, privkey);
+    const char *netfile = get_cmd_option(argv, argc, "-netfile");
 
-    Server *server = new Server(host, port, addrinf);
-    OnionRoutingApp &app = OnionRoutingApp::get_handle(pubkey, privkey);
+    if (netfile)
+    {
+        app.join_network(netfile);
+    }
+    else
+    {
+        WARNING("No netfile provided: network connection failed.");
+    }
 
-    server->attach(&app);
+    server->attach_app(&app);
 
     if (server->socket_bind() < 0)
     {
@@ -62,7 +66,7 @@ int main(int argc, char **argv)
 
     INFO("Local address: " << app.get_address());
     INFO("Listening on " << host << ":" << port);
-    
+
     server->accept_clients();
 
     return EXIT_SUCCESS;

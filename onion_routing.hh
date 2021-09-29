@@ -3,18 +3,24 @@
 
 #include <cryptography/cryptography.hh>
 #include <map>
+#include <list>
 
 #include "app.h"
 #include "connection.hh"
+#include "client.hh"
 
 class OnionRoutingApp : public App
 {
-    static const SIZE max_message_size = 4096;
-
-    static std::map<std::string, Connection *> clients;
-
     static RSA_CRYPTO rsactx;
+
+    static std::string pubkeyfile;
+    static std::string privkeyfile;
+
+    static std::string pubkey;
     static std::string address;
+
+    static std::list<Client *> peers;
+    static std::map<std::string, Connection *> clients;
 
     OnionRoutingApp(const std::string &pubkey_file, const std::string &privkey_file);
     ~OnionRoutingApp()
@@ -22,10 +28,12 @@ class OnionRoutingApp : public App
         CRYPTO::RSA_CRYPTO_free(rsactx);
     }
 
+    static int connect_peer(const std::string &host, const std::string &port, const std::string &pubkeyfile);
+
     static int setup_session(MessageParser &mp, Connection *conn);
     static int try_handshake(MessageParser &mp, Connection *conn);
     static int action(MessageParser &mp, Connection *conn);
-    
+
     static int forward_message(MessageParser &mp);
 
     static int redirect(Connection *const conn);
@@ -33,8 +41,9 @@ class OnionRoutingApp : public App
     static void *new_thread(void *);
 
 public:
-    static OnionRoutingApp &get_handle(const std::string &pubkey_file, const std::string &privkey_file);
+    static OnionRoutingApp &create_app(const std::string &pubkey_file, const std::string &privkey_file);
 
+    int join_network(const std::string &netfile);
     int handle_client(int clientsock);
 
     const std::string get_address() const { return this->address; }

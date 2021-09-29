@@ -42,7 +42,7 @@ public:
     {
         this->create_connection(host, port);
     };
-    
+
     virtual ~Socket()
     {
         delete[] buffer;
@@ -58,13 +58,14 @@ public:
         this->fd = -1;
     };
 
+    bool is_connected() const { return this->fd > 0; }
+
     virtual ssize_t write_data(const MessageBuilder &mb) const;
     virtual ssize_t write_data(const BYTE *data, SIZE datalen) const;
     ssize_t read_data(MessageParser &mp);
 
     virtual const CHAR *get_cipher() const { return "(NONE)"; }
     static SIZE get_max_socket_buff_read() { return SOCKET_MAX_BUFFER_SIZE; }
-
 };
 
 #endif

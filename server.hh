@@ -3,49 +3,87 @@
 
 #include "app.h"
 #include <netdb.h>
-
-#define MAX_HOST 256
-#define MAX_PORT 8
+#include <string>
 
 class Server
 {
-private:
-    char *host;
-    char *port;
-    addrinfo *addrinf;
+    std::string host;
+    std::string port;
+
+    addrinfo *addr_info;
     int backlog;
 
     int servsock;
-    int addrlen;
 
     App *app;
 
+    const Server &operator=(const Server &);
+    Server(const Server &);
+
 public:
+    Server() : host("localhost"), port("8080"), backlog(128)
+    {
+        this->addr_info = Server::make_default_addrinfo();
+    }
+    Server(const std::string &host, const std::string &port) : host(host), port(port), backlog(128)
+    {
+        this->addr_info = Server::make_default_addrinfo();
+    }
+    Server(const std::string &host, const std::string &port, const addrinfo *addr_info, int backlog) : host(host), port(host), addr_info(new addrinfo(*addr_info)), backlog(backlog) {}
 
-    Server();
-    Server(const char *host, const char *port, const addrinfo *addr_info, int backlog = 256);
-    Server(const Server &s);
+    ~Server() { delete this->addr_info; }
 
-    ~Server();
+    static addrinfo *make_default_addrinfo()
+    {
+        addrinfo *new_addrinfo = new addrinfo;
 
-    void set_host(const char *host);
-    void set_unix_socket_addr(const char *addr, size_t hostlen);
-    void set_port(const char *port);
-    void set_addr_info(const addrinfo *addr);
-    void set_backlog(int backlog);
+        new_addrinfo->ai_family = AF_INET;
+        new_addrinfo->ai_socktype = SOCK_STREAM;
+        new_addrinfo->ai_flags = 0;
+        new_addrinfo->ai_protocol = 0;
 
-    void attach(App *app);
+        return new_addrinfo;
+    }
 
-    const char *get_host() const;
-    const char *get_port() const;
-    const addrinfo *get_addr_info() const;
-    int get_backlog() const;
+    void set_port(const std::string &port)
+    {
+        this->port = port;
+    }
+    void set_addr_info(const addrinfo *addr)
+    {
+        delete this->addr_info;
+        this->addr_info = new addrinfo(*addr);
+    }
+    void set_backlog(int backlog)
+    {
+        this->backlog = backlog;
+    }
+
+    const std::string &get_host() const
+    {
+        return this->host;
+    }
+    const std::string &get_port() const
+    {
+        return this->port;
+    }
+    const addrinfo *get_addr_info() const
+    {
+        return this->addr_info;
+    }
+    int get_backlog() const
+    {
+        return this->backlog;
+    }
+
+    void attach_app(App *app)
+    {
+        this->app = app;
+    }
 
     int socket_bind();
     int unix_socket_bind();
     int accept_clients();
-
-    Server &operator=(const Server &s);
 };
 
 #endif

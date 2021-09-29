@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(enigma4 VERSION 4.0.0)
 
-add_executable(enigma4 main.cc cmd.cc server.cc socket.cc onion_routing.cc message.cc message_parser.cc message_builder.cc session.cc util.cc route.cc)
+add_executable(enigma4 main.cc cmd.cc server.cc socket.cc onion_routing.cc client.cc message.cc message_parser.cc message_builder.cc session.cc util.cc route.cc)
 add_executable(client eclient.cc cmd.cc client.cc socket.cc tls_socket.cc message.cc message_builder.cc message_parser.cc util.cc route.cc)
 add_executable(test test.cc socket.cc tls_socket.cc)
 

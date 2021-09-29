@@ -162,6 +162,12 @@ int Client::setup_socket(const std::string &host, const std::string &port)
     }
 
     this->sock = new Socket(host, port);
+
+    if(not this->sock->is_connected())
+    {
+        return -1;
+    }
+
     return 0;
 }
 

@@ -31,7 +31,7 @@ int Socket::create_connection(const std::string &host, const std::string &port)
         return -1;
     }
 
-    for (p = res; p != NULL; p = res->ai_next)
+    for (p = res; p != NULL; p = p->ai_next)
     {
         if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
         {

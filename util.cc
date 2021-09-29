@@ -1,4 +1,5 @@
 #include "util.hh"
+#include <stdexcept>
 
 #include <cryptography/base64.hh>
 #include <cryptography/rsa.hh>
@@ -55,7 +56,7 @@ vector<string> split(string str, const string &sep, int max_split)
 
     } while (n != string::npos);
 
-    if (str.size())
+    if (str.size() and n != string::npos)
     {
         tokens.push_back(str);
     }
@@ -67,11 +68,23 @@ BYTES read_file(const string &filename, const CHAR *open_mode)
 {
     FILE *file = fopen(filename.c_str(), open_mode);
 
+    if(not file)
+    {
+        throw runtime_error(string("Could not open file ") + filename);
+    }
+
     fseek(file, 0, SEEK_END);
     long filesize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
     BYTES data = new BYTE[filesize + 1];
+
+    if(not data)
+    {
+        throw runtime_error("Memory allocation error");
+    }
+
+    memset(data, 0, filesize + 1);
 
     fread(data, sizeof(BYTE), filesize, file);
 

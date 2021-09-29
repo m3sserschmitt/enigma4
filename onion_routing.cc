@@ -2,6 +2,7 @@
 #include "message_parser.hh"
 #include "util.hh"
 #include "debug.hh"
+#include "client.hh"
 
 #include <iostream>
 #include <unistd.h>
@@ -9,9 +10,16 @@
 
 using namespace std;
 
-std::map<string, Connection *> OnionRoutingApp::clients;
 RSA_CRYPTO OnionRoutingApp::rsactx;
+
+string OnionRoutingApp::pubkeyfile;
+string OnionRoutingApp::privkeyfile;
+
 string OnionRoutingApp::address;
+string OnionRoutingApp::pubkey;
+
+std::list<Client *> OnionRoutingApp::peers;
+std::map<string, Connection *> OnionRoutingApp::clients;
 
 OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privkey_file)
 {
@@ -19,13 +27,70 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
 
     PLAINTEXT key = (PLAINTEXT)read_file(pubkey_file, "rb");
 
+    this->pubkey = key;
+    this->pubkeyfile = pubkey_file;
+    this->privkeyfile = privkey_file;
+
     INFO("Privkey init: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx));
     INFO("RSA decr init: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT));
 
     KEY_UTIL::get_key_hexdigest(key, this->address);
 }
 
-OnionRoutingApp &OnionRoutingApp::get_handle(const string &pubkey_file, const string &privkey_file)
+int OnionRoutingApp::connect_peer(const string &host, const string &port, const string &pubkeyfile)
+{
+    Client *client = new Client(OnionRoutingApp::pubkeyfile, OnionRoutingApp::privkeyfile);
+
+    if (client->create_connection(host, port, pubkeyfile) < 0)
+    {
+        return -1;
+    }
+
+    peers.push_back(client);
+
+    return 0;
+}
+
+int OnionRoutingApp::join_network(const string &netfile)
+{
+    string netfile_content = (const CHAR *)read_file(netfile, "r");
+
+    vector<string> lines = split(netfile_content, "\n", -1);
+
+    int valid_entries = lines.size();
+
+    vector<string>::iterator it = lines.begin();
+    vector<string>::iterator it_end = lines.end();
+
+    vector<string> tokens;
+
+    int connections = 0;
+
+    for (; it != it_end; it++)
+    {
+        tokens = split(*it, " ", -1);
+
+        if (tokens.size() != 3)
+        {
+            valid_entries--;
+            continue;
+        }
+
+        if (connect_peer(tokens[0], tokens[1], tokens[2]) == 0)
+        {
+            connections++;
+        }
+    }
+
+    if (connections == valid_entries)
+    {
+        return 0;
+    }
+
+    return not connections ? -1 : 1;
+}
+
+OnionRoutingApp &OnionRoutingApp::create_app(const string &pubkey_file, const string &privkey_file)
 {
     static OnionRoutingApp app(pubkey_file, privkey_file);
 
@@ -95,7 +160,10 @@ int OnionRoutingApp::action(MessageParser &mp, Connection *conn)
         conn->sessions->cleanup(mp.get_parsed_id());
     }
 
-    forward_message(mp);
+    if (forward_message(mp) < 0)
+    {
+        return -1;
+    }
 
     return 0;
 }
