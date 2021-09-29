@@ -31,8 +31,8 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
     this->pubkeyfile = pubkey_file;
     this->privkeyfile = privkey_file;
 
-    INFO("Privkey init: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx));
-    INFO("RSA decr init: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT));
+    INFO("App: private key initialization: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx));
+    INFO("App: RSA decryption initialization: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT));
 
     KEY_UTIL::get_key_hexdigest(key, this->address);
 }
@@ -43,10 +43,14 @@ int OnionRoutingApp::connect_peer(const string &host, const string &port, const 
 
     if (client->create_connection(host, port, pubkeyfile) < 0)
     {
+        FAILED("Connection to " << host << ":" << port << " failed.");
         return -1;
     }
 
+    INFO("Connection to " << host << ":" << port << " (address: " << client->get_server_address() << ") succeeded.");
+    
     peers.push_back(client);
+    clients[client->get_server_address()] = new Connection(client->get_socket());
 
     return 0;
 }
@@ -66,6 +70,8 @@ int OnionRoutingApp::join_network(const string &netfile)
 
     int connections = 0;
 
+    NEWLINE();
+
     for (; it != it_end; it++)
     {
         tokens = split(*it, " ", -1);
@@ -82,12 +88,26 @@ int OnionRoutingApp::join_network(const string &netfile)
         }
     }
 
+    int ret;
     if (connections == valid_entries)
     {
-        return 0;
+        INFO("All connections succeeded.");
+        ret = 0;
+    }
+    else if (not connections)
+    {
+        FAILED("All connections failed; network connection failed.");
+        ret = -1;
+    }
+    else
+    {
+        WARNING("Some connections failed.");
+        ret = 1;
     }
 
-    return not connections ? -1 : 1;
+    NEWLINE();
+
+    return ret;
 }
 
 OnionRoutingApp &OnionRoutingApp::create_app(const string &pubkey_file, const string &privkey_file)

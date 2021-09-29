@@ -67,7 +67,7 @@ public:
 
     int exit_circuit(const std::string &address);
 
-    const Socket *get_socket() { return this->sock; }
+    Socket *get_socket() { return this->sock; }
     void set_socket(Socket *s) { this->sock = s; }
 };
 
