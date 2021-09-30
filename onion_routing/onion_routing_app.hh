@@ -7,8 +7,8 @@
 
 #include "app.h"
 
-#include "../session/connection.hh"
-#include "../onion_routing/client.hh"
+#include "connection.hh"
+#include "client.hh"
 
 class OnionRoutingApp : public App
 {

@@ -4,9 +4,9 @@
 #include <map>
 #include <cryptography/cryptography.hh>
 
-#include "../session/session.hh"
+#include "../onion_routing/session.hh"
 
-#include "../protocol/route.hh"
+#include "../onion_routing/route.hh"
 
 #include "message.hh"
 

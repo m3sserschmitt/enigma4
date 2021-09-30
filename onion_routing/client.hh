@@ -5,7 +5,8 @@
 
 #include "../protocol/message_builder.hh"
 #include "../protocol/message_parser.hh"
-#include "../protocol/route.hh"
+
+#include "route.hh"
 
 #include "../networking/socket.hh"
 

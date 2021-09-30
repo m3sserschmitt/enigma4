@@ -12,9 +12,6 @@ networking/tls_socket.cc
 protocol/message.cc 
 protocol/message_builder.cc 
 protocol/message_parser.cc 
-protocol/route.cc
-
-session/session.cc 
 )
 target_link_libraries(essentials util ssl cryptography)
 
@@ -23,6 +20,8 @@ add_library(onionr SHARED
 onion_routing/client.cc
 onion_routing/tls_client.cc
 onion_routing/onion_routing_app.cc
+onion_routing/route.cc
+onion_routing/session.cc
 )
 target_link_libraries(onionr essentials pthread)
 
