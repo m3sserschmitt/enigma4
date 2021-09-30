@@ -31,8 +31,8 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
     this->pubkeyfile = pubkey_file;
     this->privkeyfile = privkey_file;
 
-    INFO("App: private key initialization: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx));
-    INFO("App: RSA decryption initialization: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT));
+    SUCCESS("App: private key initialization: " << CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx));
+    SUCCESS("App: RSA decryption initialization: " << CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT));
 
     KEY_UTIL::get_key_hexdigest(key, this->address);
 }
@@ -43,12 +43,12 @@ int OnionRoutingApp::connect_peer(const string &host, const string &port, const 
 
     if (client->create_connection(host, port, pubkeyfile) < 0)
     {
-        FAILED("Connection to " << host << ":" << port << " failed.");
+        FAILURE("Connection to " << host << ":" << port << " failed.");
         return -1;
     }
 
-    INFO("Connection to " << host << ":" << port << " (address: " << client->get_server_address() << ") succeeded.");
-    
+    SUCCESS("Connection to " << host << ":" << port << " (address: " << client->get_server_address() << ") succeeded.");
+
     peers.push_back(client);
     clients[client->get_server_address()] = new Connection(client->get_socket());
 
@@ -91,12 +91,12 @@ int OnionRoutingApp::join_network(const string &netfile)
     int ret;
     if (connections == valid_entries)
     {
-        INFO("All connections succeeded.");
+        SUCCESS("All connections succeeded.");
         ret = 0;
     }
     else if (not connections)
     {
-        FAILED("All connections failed; network connection failed.");
+        FAILURE("All connections failed; network connection failed.");
         ret = -1;
     }
     else
@@ -151,7 +151,7 @@ int OnionRoutingApp::forward_message(MessageParser &mp)
 
     if (next == clients.end())
     {
-        FAILED("Address not found: " << next_address);
+        FAILURE("Address not found: " << next_address);
         return -1;
     }
 

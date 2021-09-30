@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        WARNING("No netfile provided; network connection failed.");
+        FAILURE("No netfile provided; network connection failed.");
     }
 
     server->attach_app(&app);

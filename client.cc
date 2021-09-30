@@ -78,7 +78,7 @@ int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<
 
         if (setup_session_from_handshake(mp, rsactx, routes, aesctx) < 0)
         {
-            FAILED("Handshake failed.");
+            FAILURE("Handshake failed.");
             return 0;
         }
 
@@ -90,7 +90,7 @@ int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<
     else if (mp.is_exit())
     {
         mp.remove_id();
-        
+
         string id = mp.get_parsed_id();
 
         INFO("EXIT received for session ID: " << id);
@@ -163,7 +163,7 @@ int Client::setup_socket(const std::string &host, const std::string &port)
 
     this->sock = new Socket(host, port);
 
-    if(not this->sock->is_connected())
+    if (not this->sock->is_connected())
     {
         return -1;
     }
