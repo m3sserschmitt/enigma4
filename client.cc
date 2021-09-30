@@ -330,14 +330,16 @@ int Client::handshake(Route *route)
     }
 
     MessageBuilder mb;
-    mb.handshake(route->get_aesctx(), route->get_rsactx(), this->pubkey);
+    if (route != this->serv)
+    {
+        mb.handshake(route->get_aesctx(), route->get_rsactx(), "");
+    }
+    else
+    {
+        mb.handshake(route->get_aesctx(), route->get_rsactx(), this->pubkey);
+    }
 
     return this->write_dest(mb, route) > 0 ? 0 : -1;
-}
-
-int Client::handshake(const string &dest)
-{
-    return this->handshake(routes[dest]);
 }
 
 int Client::exit_circuit(const string &address)

@@ -85,6 +85,7 @@ int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
 
     BYTES ptr = this->get_payload_ptr();
     SIZE payload_size = this->get_payload_size();
+    SIZE remaining = payload_size;
 
     BYTES key = 0;
     string pubkey_hexdigest;
@@ -100,11 +101,17 @@ int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
         goto endfunc;
     }
 
-    ptr += 512;
-
     if (CRYPTO::AES_setup_key(key, decrlen, aesctx) < 0 or CRYPTO::AES_init(0, 0, 0, 0, aesctx) < 0)
     {
         ret = -1;
+        goto endfunc;
+    }
+
+    ptr += MESSAGE_ENC_PUBKEY_SIZE;
+    remaining -= MESSAGE_ENC_PUBKEY_SIZE;
+
+    if(not remaining)
+    {
         goto endfunc;
     }
 

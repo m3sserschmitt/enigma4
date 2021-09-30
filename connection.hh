@@ -35,8 +35,13 @@ public:
             return -1;
         }
 
-        if (mp.key_exists("address"))
+        if (not this->address.size())
         {
+            if (not mp.key_exists("pubkey"))
+            {
+                return -1;
+            }
+            
             this->address = mp.get_parsed_address();
         }
 

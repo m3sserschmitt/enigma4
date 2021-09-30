@@ -20,7 +20,7 @@ int MessageBuilder::encrypt(AES_CRYPTO ctx)
     }
 
     this->set_payload(out, result);
-    if(not this->is_exit())
+    if (not this->is_exit())
     {
         this->set_message_type(MESSAGE_ENC_AES);
     }
@@ -59,13 +59,17 @@ int MessageBuilder::handshake(AES_CRYPTO aesctx, RSA_CRYPTO rsactx, const string
 
     this->set_payload(encrkey, encrlen);
 
-    if ((encrlen = CRYPTO::AES_encrypt(aesctx, (const BYTE *)data.c_str(), data.size(), &encrdata)) < 0)
+    if (pubkeypem.size())
     {
-        ret = -1;
-        goto endfunc;
+        if ((encrlen = CRYPTO::AES_encrypt(aesctx, (const BYTE *)data.c_str(), data.size(), &encrdata)) < 0)
+        {
+            ret = -1;
+            goto endfunc;
+        }
+
+        this->append_payload_end(encrdata, encrlen);
     }
 
-    this->append_payload_end(encrdata, encrlen);
     this->set_message_type(MESSAGE_HANDSHAKE);
 
 endfunc:

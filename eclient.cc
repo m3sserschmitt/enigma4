@@ -1,5 +1,6 @@
 #include <iostream>
 #include <unistd.h>
+#include <vector>
 
 #include "client.hh"
 
@@ -17,60 +18,74 @@ void gen_keys()
 int main(int argc, char **argv)
 {
 
-    const char *ck = get_cmd_option(argv, argc, "-ck");
+    const char *client_pubkey = get_cmd_option(argv, argc, "-pubkey");
 
-    if (not ck)
+    if (not client_pubkey)
     {
         cout << "[-] Error: client public key is missing.\n";
         return EXIT_FAILURE;
     }
 
-    const char *sk = get_cmd_option(argv, argc, "-sk");
+    const char *client_privkey = get_cmd_option(argv, argc, "-privkey");
 
-    if (not sk)
-    {
-        cout << "[-] Error: server public key is missing.\n";
-        return EXIT_FAILURE;
-    }
-
-    const char *pk = get_cmd_option(argv, argc, "-pk");
-
-    if (not pk)
+    if (not client_privkey)
     {
         cout << "[-] Error: Client private key is missing\n";
         return EXIT_FAILURE;
     }
 
-    const char *dk = get_cmd_option(argv, argc, "-dk");
+    const char *circuit_file = get_cmd_option(argv, argc, "-circuit");
 
-    Client client(ck, pk);
+    if (not circuit_file)
+    {
+        cout << "[-] Error : circuit file is missing\n";
+        return EXIT_FAILURE;
+    }
 
+    Client client(client_pubkey, client_privkey);
     cout << "[+] Client address: " << client.get_client_hexaddress() << "\n";
-    cout << "[+] Connection status: " << client.create_connection("localhost", "8080", sk) << "\n";
 
-    string server_address = client.get_server_address();
-    cout << "[+] Server address: " << server_address << "\n";
+    string circuit_file_content = (const char *)read_file(circuit_file, "r");
+    vector<string> entries = split(circuit_file_content, "\n", -1);
+    vector<string> tokens = split(entries[0], " ", -1);
 
-    string dest_address = client.add_node(dk, server_address);
+    if(tokens.size() != 3)
+    {
+        cout << "[-] Error: server connection failed.\n";
+        return EXIT_FAILURE;
+    }
 
-    cout << "[+] Destination address: " << dest_address << "\n";
+    cout << "[+] Connection status: " << client.create_connection(tokens[0], tokens[1], tokens[2]) << "\n";
+
+    string last_address = client.get_server_address();
+    cout << "[+] Server address: " << last_address << "\n";
+
+    for (size_t k = 1; k < entries.size(); k++)
+    {
+        if(not entries[k].size())
+        {
+            continue;
+        }
+
+        last_address = client.add_node(entries[k], last_address);
+    }
 
     string input;
 
-    while (dest_address.size())
+    while (1)
     {
         cout << "[+] Enter message: ";
         getline(cin, input);
 
-        if(not input.size())
+        if (not input.size())
         {
             break;
         }
 
-        client.write_data((BYTES)input.c_str(), input.size(), dest_address);
+        client.write_data((BYTES)input.c_str(), input.size(), last_address);
     }
 
-    client.exit_circuit(dest_address);
+    client.exit_circuit(last_address);
 
     return 0;
 }

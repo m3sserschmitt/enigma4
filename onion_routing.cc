@@ -133,7 +133,7 @@ int OnionRoutingApp::try_handshake(MessageParser &mp, Connection *conn)
         return -1;
     }
 
-    INFO("Handshake completed: " << mp.get_parsed_address() << "; session ID: " << mp.get_parsed_id());
+    INFO("Handshake completed: " << conn->get_address() << "; session ID: " << mp.get_parsed_id());
 
     OnionRoutingApp::clients.insert(pair<string, Connection *>(mp.get_parsed_address(), conn));
 
