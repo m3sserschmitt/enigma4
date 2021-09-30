@@ -1,7 +1,8 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include "app.h"
+#include "../onion_routing/app.h"
+
 #include <netdb.h>
 #include <string>
 

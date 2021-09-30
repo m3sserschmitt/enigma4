@@ -1,11 +1,10 @@
 #ifndef SOCKET_HH
 #define SOCKET_HH
 
-#include "message_parser.hh"
-#include "message_builder.hh"
+#include "../protocol/message_parser.hh"
+#include "../protocol/message_builder.hh"
 
 #include <unistd.h>
-#include <string>
 
 class Socket
 {
@@ -18,7 +17,10 @@ class Socket
     bool connected;
 
     ssize_t read_buffer(MessageParser &mp);
-    virtual ssize_t read_data();
+    virtual ssize_t read_data()
+    {
+        return read(this->fd, this->buffer + (this->delta > 0 ? this->delta : 0), SOCKET_MAX_BUFFER_SIZE);
+    }
 
     Socket(const Socket &);
     const Socket &operator=(const Socket &s);

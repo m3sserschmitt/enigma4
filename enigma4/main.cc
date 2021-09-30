@@ -1,7 +1,9 @@
-#include "server.hh"
-#include "onion_routing.hh"
-#include "cmd.hh"
-#include "debug.hh"
+#include "./server.hh"
+
+#include "../onion_routing/onion_routing_app.hh"
+
+#include "../util/cmd.hh"
+#include "../util/debug.hh"
 
 #include <iostream>
 

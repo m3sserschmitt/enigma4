@@ -1,13 +1,9 @@
 #ifndef _TYPES_HH
 #define _TYPES_HH
 
-#include <cryptography/cryptography.hh>
-#include <map>
-#include <string.h>
-
-#include "socket.hh"
+#include "../networking/socket.hh"
 #include "session.hh"
-#include "message_parser.hh"
+#include "../protocol/message_parser.hh"
 
 class Connection
 {

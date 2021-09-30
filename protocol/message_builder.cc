@@ -1,5 +1,4 @@
 #include "message_builder.hh"
-#include "util.hh"
 
 using namespace std;
 

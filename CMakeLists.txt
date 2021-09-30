@@ -1,20 +1,38 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(enigma4 VERSION 4.0.0)
 
-add_executable(enigma4 main.cc cmd.cc server.cc socket.cc onion_routing.cc client.cc message.cc message_parser.cc message_builder.cc session.cc util.cc route.cc system_time.cc)
-add_executable(client eclient.cc cmd.cc client.cc socket.cc tls_socket.cc message.cc message_builder.cc message_parser.cc util.cc route.cc system_time.cc)
-add_executable(test test.cc socket.cc tls_socket.cc)
 
-target_link_libraries(enigma4 cryptography6)
-target_link_libraries(enigma4 crypto)
-target_link_libraries(enigma4 pthread)
+add_library(util SHARED util/cmd.cc util/system_time.cc util/util.cc)
 
-target_link_libraries(client cryptography)
-target_link_libraries(client pthread)
-target_link_libraries(client ssl)
 
-target_link_libraries(test ssl)
-target_link_libraries(test crypto)
+add_library(essentials SHARED
+networking/socket.cc 
+networking/tls_socket.cc 
+
+protocol/message.cc 
+protocol/message_builder.cc 
+protocol/message_parser.cc 
+protocol/route.cc
+
+session/session.cc 
+)
+target_link_libraries(essentials util ssl cryptography)
+
+
+add_library(onionr SHARED 
+onion_routing/client.cc
+onion_routing/tls_client.cc
+onion_routing/onion_routing_app.cc
+)
+target_link_libraries(onionr essentials pthread)
+
+
+add_executable(enigma4 enigma4/main.cc enigma4/server.cc)
+target_link_libraries(enigma4 onionr)
+
+
+add_executable(eclient eclient.cc)
+target_link_libraries(eclient onionr)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

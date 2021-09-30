@@ -1,18 +1,14 @@
 #ifndef CLIENT_HH
 #define CLIENT_HH
 
-#include "message_builder.hh"
-#include "message_parser.hh"
-
 #include <cryptography/cryptography.hh>
-#include <cryptography/random.hh>
 
-#include <map>
-#include <string>
-#include <queue>
-#include "socket.hh"
-#include "util.hh"
-#include "route.hh"
+#include "../protocol/message_builder.hh"
+#include "../protocol/message_parser.hh"
+#include "../protocol/route.hh"
+
+#include "../networking/socket.hh"
+
 
 class Client
 {

@@ -1,8 +1,4 @@
-#include "message_parser.hh"
-#include "util.hh"
-#include <string.h>
-#include <cryptography/cryptography.hh>
-#include "session.hh"
+#include "../protocol/message_parser.hh"
 
 using namespace std;
 

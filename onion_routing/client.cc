@@ -1,25 +1,11 @@
-#include "client.hh"
-
 #include <string.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <pthread.h>
-
-#include "util.hh"
-#include "connection.hh"
-#include "message_builder.hh"
-#include "message_parser.hh"
-#include "tls_socket.hh"
 
 #include <cryptography/random.hh>
 #include <cryptography/base64.hh>
-#include <iostream>
-#include "debug.hh"
 
-#include "message_const.hh"
+#include "./client.hh"
+
+#include "../util/debug.hh"
 
 using namespace std;
 

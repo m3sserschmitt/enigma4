@@ -4,7 +4,7 @@
 #include <cryptography/cryptography.hh>
 #include <cryptography/random.hh>
 #include <string.h>
-#include "util.hh"
+#include "../util/util.hh"
 
 
 class Route

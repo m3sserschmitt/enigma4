@@ -6,8 +6,9 @@
 #include <list>
 
 #include "app.h"
-#include "connection.hh"
-#include "client.hh"
+
+#include "../session/connection.hh"
+#include "../onion_routing/client.hh"
 
 class OnionRoutingApp : public App
 {

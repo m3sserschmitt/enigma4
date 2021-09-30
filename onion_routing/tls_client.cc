@@ -1,6 +1,6 @@
 #include "tls_client.hh"
 
-#include "tls_socket.hh"
+#include "../networking/tls_socket.hh"
 
 int TLSClient::setup_socket(const std::string &host, const std::string &port)
 {

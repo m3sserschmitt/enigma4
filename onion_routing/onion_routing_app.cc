@@ -1,12 +1,10 @@
-#include "onion_routing.hh"
-#include "message_parser.hh"
-#include "util.hh"
-#include "debug.hh"
-#include "client.hh"
+#include "./onion_routing_app.hh"
 
-#include <iostream>
-#include <unistd.h>
-#include <string.h>
+#include "../protocol/message_parser.hh"
+
+#include "../onion_routing/client.hh"
+
+#include "../util/debug.hh"
 
 using namespace std;
 

@@ -1,8 +1,6 @@
 #ifndef MESSAGE_BUILDER_HH
 #define MESSAGE_BUILDER_HH
 
-#include <string>
-#include <string.h>
 #include <cryptography/cryptography.hh>
 
 #include "message.hh"

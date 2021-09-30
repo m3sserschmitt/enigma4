@@ -1,12 +1,6 @@
 #include "socket.hh"
 
-#include <arpa/inet.h>
 #include <netdb.h>
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <unistd.h>
-#include <math.h>
 
 int Socket::create_connection(const std::string &host, const std::string &port)
 {
@@ -76,11 +70,6 @@ ssize_t Socket::read_buffer(MessageParser &mp)
     }
 
     return buffread;
-}
-
-ssize_t Socket::read_data()
-{
-    return read(this->fd, this->buffer + (this->delta > 0 ? this->delta : 0), SOCKET_MAX_BUFFER_SIZE);
 }
 
 ssize_t Socket::read_data(MessageParser &mp)

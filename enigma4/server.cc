@@ -1,12 +1,8 @@
 #include "server.hh"
 
-#include <iostream>
-#include <netdb.h>
 #include <unistd.h>
-#include <string.h>
 #include <sys/un.h>
 
-using namespace std;
 
 int Server::socket_bind()
 {

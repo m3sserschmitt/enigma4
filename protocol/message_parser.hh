@@ -2,13 +2,11 @@
 #define MESSAGE_PARSER_HH
 
 #include <map>
-#include <string>
-#include <string.h>
 #include <cryptography/cryptography.hh>
-#include <math.h>
-#include "session.hh"
-#include "util.hh"
-#include "route.hh"
+
+#include "../session/session.hh"
+
+#include "../protocol/route.hh"
 
 #include "message.hh"
 

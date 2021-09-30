@@ -2,11 +2,11 @@
 #include <unistd.h>
 #include <vector>
 
-#include "client.hh"
+#include "onion_routing/client.hh"
 
 #include <cryptography/cryptography.hh>
 
-#include "cmd.hh"
+#include "util/cmd.hh"
 
 using namespace std;
 

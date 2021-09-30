@@ -1,10 +1,7 @@
 #include "util.hh"
 #include <stdexcept>
 
-#include <cryptography/base64.hh>
-#include <cryptography/rsa.hh>
-#include <cryptography/sha.hh>
-#include <cryptography/base64.hh>
+#include <cryptography/cryptography.hh>
 
 #include <string.h>
 
