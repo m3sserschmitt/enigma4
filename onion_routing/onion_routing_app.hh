@@ -20,7 +20,6 @@ class OnionRoutingApp : public App
     static std::string pubkey;
     static std::string address;
 
-    static std::list<Client *> peers;
     static std::map<std::string, Connection *> clients;
 
     OnionRoutingApp(const std::string &pubkey_file, const std::string &privkey_file);
@@ -29,7 +28,7 @@ class OnionRoutingApp : public App
         CRYPTO::RSA_CRYPTO_free(rsactx);
     }
 
-    static int connect_peer(const std::string &host, const std::string &port, const std::string &pubkeyfile);
+    int connect_peer(const std::string &host, const std::string &port, const std::string &pubkeyfile);
 
     static int setup_session(MessageParser &mp, Connection *conn);
     static int try_handshake(MessageParser &mp, Connection *conn);

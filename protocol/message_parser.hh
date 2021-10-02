@@ -4,11 +4,11 @@
 #include <map>
 #include <cryptography/cryptography.hh>
 
-#include "../onion_routing/session.hh"
-
 #include "../onion_routing/route.hh"
 
 #include "message.hh"
+
+class Connection;
 
 class MessageParser : public Message
 {
@@ -96,8 +96,8 @@ public:
         return not this->get_required_size();
     }
 
-    int decrypt(Route *r);
-    int decrypt(SessionManager *s);
+    int decrypt(Route *route);
+    int decrypt(Connection *conn);
 
     int handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
 

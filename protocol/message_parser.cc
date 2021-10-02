@@ -1,5 +1,7 @@
 #include "../protocol/message_parser.hh"
 
+#include "../onion_routing/connection.hh"
+
 using namespace std;
 
 void MessageParser::parse(const CHAR *data)
@@ -54,18 +56,18 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
     return 0;
 }
 
-int MessageParser::decrypt(Route *r)
+int MessageParser::decrypt(Route *route)
 {
     this->remove_id();
-    AES_CRYPTO ctx = r->get_aesctx();
+    AES_CRYPTO ctx = route->get_aesctx();
 
     return this->decrypt(ctx);
 }
 
-int MessageParser::decrypt(SessionManager *session)
+int MessageParser::decrypt(Connection *conn)
 {
     this->remove_id();
-    AES_CRYPTO ctx = session->get_ctx(this->get_parsed_id());
+    AES_CRYPTO ctx = conn->sessions->get_ctx(this->get_parsed_id());
 
     return this->decrypt(ctx);
 }

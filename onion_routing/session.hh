@@ -28,6 +28,14 @@ public:
     }
     ~SessionManager()
     {
+        std::map<std::string, AES_CRYPTO>::iterator it = keys.begin();
+        std::map<std::string, AES_CRYPTO>::iterator it_end = keys.end();
+
+        for (; it != it_end; it++)
+        {
+            CRYPTO::AES_CRYPTO_free_keys(it->second);
+        }
+
         CRYPTO::AES_CRYPTO_free(this->aesctx);
     }
 
@@ -37,8 +45,10 @@ public:
     void set(const std::string &id, AES_CRYPTO aesctx) { this->keys[id] = aesctx; }
     void cleanup(const std::string &id)
     {
-        
+        CRYPTO::AES_CRYPTO_free_keys(keys[id]);
+        keys.erase(id);
     }
+    
     AES_CRYPTO operator[](const std::string &id)
     {
         return this->keys[id];

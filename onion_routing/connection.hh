@@ -44,6 +44,10 @@ public:
         return 0;
     }
 
+    void set_address(const std::string &address) 
+    {
+        this->address = address;
+    }
     const std::string &get_address() const { return this->address; }
 
     ssize_t read_data(MessageParser &mp) const { return this->sock->read_data(mp); }

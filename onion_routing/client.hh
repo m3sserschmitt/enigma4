@@ -6,10 +6,11 @@
 #include "../protocol/message_builder.hh"
 #include "../protocol/message_parser.hh"
 
+#include "../onion_routing/connection.hh"
+
 #include "route.hh"
 
 #include "../networking/socket.hh"
-
 
 class Client
 {
@@ -21,7 +22,7 @@ class Client
         std::string client_address;
         std::map<std::string, Route *> *routes;
     };
-
+    
     Socket *sock;
     Route *serv;
 
@@ -51,11 +52,22 @@ class Client
 
 public:
     Client(const std::string &pubkey, const std::string &privkey);
+    ~Client()
+    {
+        delete this->sock;
+        delete this->serv;
+
+        CRYPTO::RSA_CRYPTO_free(this->rsactx);
+
+        this->sock = 0;
+        this->serv = 0;
+        this->rsactx = 0;
+    }
 
     const std::string &get_client_hexaddress() const { return this->hexaddress; }
     const std::string get_server_address() const { return this->serv->get_key_hexdigest(); }
 
-    int create_connection(const std::string &host, const std::string &port, const std::string &keyfile);
+    int create_connection(const std::string &host, const std::string &port, const std::string &keyfile, bool start_listener = true);
 
     const std::string add_node(const std::string &keyfile, const std::string &last_address);
 
@@ -65,6 +77,16 @@ public:
 
     Socket *get_socket() { return this->sock; }
     void set_socket(Socket *s) { this->sock = s; }
+
+    Connection *make_connection() const 
+    {
+        Socket *new_socket = sock->make_socket_copy();
+        Connection *new_connection = new Connection(new_socket);
+
+        new_connection->set_address(this->get_server_address());
+
+        return new_connection;
+    }
 };
 
 #endif

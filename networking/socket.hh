@@ -14,8 +14,6 @@ class Socket
     BYTES buffer;
     int delta;
 
-    bool connected;
-
     ssize_t read_buffer(MessageParser &mp);
     virtual ssize_t read_data()
     {
@@ -68,6 +66,17 @@ public:
 
     virtual const CHAR *get_cipher() const { return "(NONE)"; }
     static SIZE get_max_socket_buff_read() { return SOCKET_MAX_BUFFER_SIZE; }
+
+    Socket *make_socket_copy() const 
+    {
+        Socket *copy = new Socket;
+
+        copy->fd = this->fd;
+        memcpy(copy->buffer, this->buffer, SOCKET_MAX_BUFFER_SIZE);
+        copy->delta = this->delta;
+
+        return copy;
+    }
 };
 
 #endif
