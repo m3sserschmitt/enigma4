@@ -56,18 +56,25 @@ struct stream
 
 static stream debug_stream;
 
-// #define LOG(x) debug_stream << x;
+template <class T>
+void print_debug_message(T t)
+{
+    debug_stream << t << "\n";
+}
 
-// #define PRINTLINE(x) debug_stream << x << "\n";
-// #define NPRINTLINE(x) debug_stream << "\n" \
-//                                    << x << "\n";
+template <typename T, class ... K>
+void print_debug_message(T t, K ... k)
+{
+    debug_stream << t;
+    print_debug_message(k...);
+}
 
-#define SUCCESS(x) debug_stream << SUCCESS << x << "\n";
-#define INFO(x) debug_stream << INFO << x << "\n";
-#define WARNING(x) debug_stream << WARNING << x << "\n";
-#define FAILURE(x) debug_stream << FAILURE << x << "\n";
-#define ERROR(x) debug_stream << ERROR << x << "\n\n";
+#define SUCCESS(...) print_debug_message(SUCCESS, __VA_ARGS__);
+#define INFO(...) print_debug_message(INFO, __VA_ARGS__);
+#define WARNING(...) print_debug_message(WARNING, __VA_ARGS__);
+#define FAILURE(...) print_debug_message(FAILURE, __VA_ARGS__);
+#define ERROR(...) print_debug_message(ERROR, __VA_ARGS__, "\n");
 
-#define NEWLINE() debug_stream << "\n";
+#define NEWLINE() print_debug_message("\n");
 
 #endif

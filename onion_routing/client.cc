@@ -43,7 +43,7 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
     mp.remove_id();
     Route *route = (*routes)[mp.get_parsed_id()];
 
-    INFO("Session ID: " << mp.get_parsed_id());
+    INFO("Session ID: ", mp.get_parsed_id());
 
     if ((not route or mp.decrypt(route) < 0))
     {
@@ -58,33 +58,33 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
 int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<string, Route *> *routes)
 {
     mp.remove_id();
-    string session_id = mp.get_parsed_id();
+    const string &session_id = mp.get_parsed_id();
 
     if (mp.is_handshake())
     {
         NEWLINE();
-        INFO("Handshake received for session ID: " << session_id);
+        INFO("Handshake received for session ID: ", session_id);
 
         if (setup_session_from_handshake(mp, rsactx, routes, aesctx) < 0)
         {
-            FAILURE("Handshake failed for session ID: " << session_id);
+            FAILURE("Handshake failed for session ID: ", session_id);
             return 0;
         }
 
-        INFO("Handshake completed for session ID: " << session_id);
+        INFO("Handshake completed for session ID: ", session_id);
 
         return 0;
     }
     else if (mp.is_exit())
     {
-        INFO("EXIT received for session ID: " << session_id);
+        INFO("EXIT received for session ID: ", session_id);
 
         Route *route = (*routes)[session_id];
         delete route;
 
         routes->erase(session_id);
 
-        INFO("Session with ID " << session_id << " erased.");
+        INFO("Session with ID ", session_id, " erased.");
 
         return 0;
     }
@@ -111,9 +111,10 @@ void *Client::data_listener(void *args)
     while (sock->read_data(mp) > 0)
     {
         NEWLINE();
-        INFO("Data received: " << mp.get_datalen() << " bytes; session ID: " << mp.get_parsed_id());
 
         mp.remove_id();
+        INFO("Data received; session ID: ", mp.get_parsed_id());
+    
 
         if (action(mp, rsactx, aesctx, routes) == 0)
         {
@@ -129,8 +130,8 @@ void *Client::data_listener(void *args)
 
         next_address = mp.get_parsed_next_address();
 
-        INFO("Destination: " << next_address << (next_address == client_address ? " -> Match!" : " -> Don't match !!"));
-        INFO("Message content: " << mp.get_payload());
+        INFO("Destination: ", next_address, (next_address == client_address ? " -> Match!" : " -> Don't match !!"));
+        INFO("Message content: ", mp.get_payload());
 
         mp.clear();
     }

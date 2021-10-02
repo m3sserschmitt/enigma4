@@ -11,7 +11,6 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-
     const char *pubkey = get_cmd_option(argv, argc, "-pubkey");
 
     if (not pubkey)
@@ -66,8 +65,8 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    INFO("Local address: " << app.get_address());
-    INFO("Listening on " << host << ":" << port);
+    INFO("Local address: ", app.get_address());
+    INFO("Listening on ", host, ":", port);
 
     server->accept_clients();
 
