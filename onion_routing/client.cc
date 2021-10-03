@@ -46,8 +46,6 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
     mp.remove_id();
     Route *route = (*routes)[mp.get_parsed_id()];
 
-    INFO("Session ID: ", mp.get_parsed_id());
-
     if ((not route or mp.decrypt(route) < 0))
     {
         return -1;
@@ -117,7 +115,6 @@ void *Client::data_listener(void *args)
 
         mp.remove_id();
         INFO("Data received; session ID: ", mp.get_parsed_id());
-    
 
         if (action(mp, rsactx, aesctx, routes) == 0)
         {
@@ -133,7 +130,7 @@ void *Client::data_listener(void *args)
 
         next_address = mp.get_parsed_next_address();
 
-        INFO("Destination: ", next_address, (next_address == client_address ? " -> Match!" : " -> Don't match !!"));
+        INFO("Destination for session ID ", mp.get_parsed_id(), ": ", next_address, (next_address == client_address ? " -> Match!" : " -> Don't match !!"));
         cout << "Message content: " << mp.get_payload() << "\n";
 
         mp.clear();
@@ -190,17 +187,26 @@ const string Client::setup_dest(const string &keyfile, Route **route, const BYTE
         return "";
     }
 
-    if (this->serv)
+    if (id)
     {
-        if (dest_route->set_id(this->serv->get_id()) < 0)
-        {
-            return "";
-        }
+        dest_route->use_id(id);
     }
     else
     {
-        dest_route->set_id(id);
+        dest_route->set_id(0);
     }
+
+    // if (this->serv)
+    // {
+    //     if (dest_route->set_id(this->serv->get_id()) < 0)
+    //     {
+    //         return "";
+    //     }
+    // }
+    // else
+    // {
+    //     dest_route->set_id(id);
+    // }
 
     const CHAR *hexdigest = dest_route->get_key_hexdigest();
     // const CHAR *base64id = dest_route->encode_id();
@@ -217,7 +223,7 @@ const string Client::setup_dest(const string &keyfile, Route **route, const BYTE
     return dest_route->get_key_hexdigest();
 }
 
-const string Client::add_node(const std::string &keyfile, const std::string &last_address)
+const string Client::add_node(const std::string &keyfile, const std::string &last_address, bool identify, bool make_new_session)
 {
     Route *last_route = routes[last_address];
 
@@ -227,7 +233,16 @@ const string Client::add_node(const std::string &keyfile, const std::string &las
     }
 
     Route *new_route;
-    string dest_address = this->setup_dest(keyfile, &new_route);
+    string dest_address;
+
+    if (make_new_session)
+    {
+        dest_address = this->setup_dest(keyfile, &new_route);
+    }
+    else
+    {
+        dest_address = this->setup_dest(keyfile, &new_route, 0, last_route->get_id());
+    }
 
     if (not new_route)
     {
@@ -237,7 +252,7 @@ const string Client::add_node(const std::string &keyfile, const std::string &las
     new_route->set_previous(last_route);
     last_route->set_next(new_route);
 
-    this->handshake(new_route);
+    this->handshake(new_route, identify);
 
     return dest_address;
 }
@@ -306,7 +321,7 @@ int Client::write_dest(MessageBuilder &mb, Route *route)
     return this->sock->write_data(mb) < 0 ? -1 : 0;
 }
 
-int Client::handshake(Route *route)
+int Client::handshake(Route *route, bool add_pubkey)
 {
     if (not route)
     {
@@ -314,13 +329,13 @@ int Client::handshake(Route *route)
     }
 
     MessageBuilder mb;
-    if (route != this->serv)
+    if (add_pubkey)
     {
-        mb.handshake(route->get_aesctx(), route->get_rsactx());
+        mb.handshake(route->get_aesctx(), route->get_rsactx(), this->rsactx, this->pubkey);
     }
     else
     {
-        mb.handshake(route->get_aesctx(), route->get_rsactx(), this->rsactx, this->pubkey);
+        mb.handshake(route->get_aesctx(), route->get_rsactx());
     }
 
     return this->write_dest(mb, route) < 0 ? -1 : 0;

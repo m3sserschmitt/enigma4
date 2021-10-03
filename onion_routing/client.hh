@@ -22,7 +22,7 @@ class Client
         std::string client_address;
         std::map<std::string, Route *> *routes;
     };
-    
+
     Socket *sock;
     Route *serv;
 
@@ -37,7 +37,7 @@ class Client
 
     const std::string setup_dest(const std::string &keyfile, Route **route, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
 
-    int handshake(Route *route);
+    int handshake(Route *route, bool add_pubkey = true);
 
     static int setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx);
     static int action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, std::map<std::string, Route *> *routes);
@@ -69,7 +69,7 @@ public:
 
     int create_connection(const std::string &host, const std::string &port, const std::string &keyfile, bool start_listener = true);
 
-    const std::string add_node(const std::string &keyfile, const std::string &last_address);
+    const std::string add_node(const std::string &keyfile, const std::string &last_address, bool identify = false, bool make_new_session = false);
 
     int write_data(const BYTE *data, SIZE datalen, const std::string &address);
 
@@ -78,7 +78,7 @@ public:
     Socket *get_socket() { return this->sock; }
     void set_socket(Socket *s) { this->sock = s; }
 
-    Connection *make_connection() const 
+    Connection *make_connection() const
     {
         Socket *new_socket = sock->make_socket_copy();
         Connection *new_connection = new Connection(new_socket);
