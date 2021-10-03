@@ -1,4 +1,5 @@
 #include "message_builder.hh"
+#include "../onion_routing/route.hh"
 
 using namespace std;
 
@@ -28,19 +29,16 @@ int MessageBuilder::encrypt(AES_CRYPTO ctx)
     return 0;
 }
 
-int MessageBuilder::handshake(AES_CRYPTO aesctx, RSA_CRYPTO rsactx, const string &pubkeypem)
+int MessageBuilder::encrypt(Route *route)
 {
-    if (not CRYPTO::AES_encrypt_ready(aesctx) or not CRYPTO::RSA_encrypt_ready(rsactx))
-    {
-        return -1;
-    }
+    return this->encrypt(route->get_aesctx());
+}
 
+int MessageBuilder::handshake_setup_session_key(AES_CRYPTO aesctx, RSA_CRYPTO rsactx)
+{
     BYTES key = 0;
     BYTES encrkey = 0;
-    BYTES encrdata = 0;
     int encrlen;
-
-    string data = "pubkey: " + pubkeypem;
 
     int ret = 0;
 
@@ -56,27 +54,74 @@ int MessageBuilder::handshake(AES_CRYPTO aesctx, RSA_CRYPTO rsactx, const string
         goto endfunc;
     }
 
-    this->set_payload(encrkey, encrlen);
-
-    if (pubkeypem.size())
-    {
-        if ((encrlen = CRYPTO::AES_encrypt(aesctx, (const BYTE *)data.c_str(), data.size(), &encrdata)) < 0)
-        {
-            ret = -1;
-            goto endfunc;
-        }
-
-        this->append_payload_end(encrdata, encrlen);
-    }
-
-    this->set_message_type(MESSAGE_HANDSHAKE);
+    this->append_payload_end(encrkey, encrlen);
 
 endfunc:
     delete[] key;
     delete[] encrkey;
-    delete[] encrdata;
 
     return ret;
+}
+
+int MessageBuilder::handshake_setup_pubkey(AES_CRYPTO ctx, const string &pubkeypem)
+{
+
+    BYTES encrdata = 0;
+    int encrlen;
+
+    string data = "pubkey: " + pubkeypem;
+
+    if ((encrlen = CRYPTO::AES_encrypt(ctx, (const BYTE *)data.c_str(), data.size(), &encrdata)) < 0)
+    {
+        delete[] encrdata;
+        return -1;
+    }
+
+    this->append_payload_end(encrdata, encrlen);
+
+    return 0;
+}
+
+int MessageBuilder::sign_message(RSA_CRYPTO ctx)
+{
+    BYTES signature = 0;
+    int signlen;
+
+    if ((signlen = CRYPTO::RSA_sign(ctx, this->get_data(), this->get_datalen(), &signature)) < 0)
+    {
+        delete[] signature;
+        return -1;
+    }
+
+    this->append_payload_end(signature, signlen);
+
+    delete[] signature;
+    return 0;
+}
+
+int MessageBuilder::handshake(AES_CRYPTO aesctx, RSA_CRYPTO encrrsactx, RSA_CRYPTO signrsactx, const string &pubkeypem)
+{
+    if (this->handshake_setup_session_key(aesctx, encrrsactx) < 0)
+    {
+        return -1;
+    }
+
+    if (pubkeypem.size())
+    {
+        if (this->handshake_setup_pubkey(aesctx, pubkeypem) < 0)
+        {
+            return -1;
+        }
+
+        if (this->sign_message(signrsactx) < 0)
+        {
+            return -1;
+        }
+    }
+
+    this->set_message_type(MESSAGE_HANDSHAKE);
+
+    return 0;
 }
 
 MessageBuilder &MessageBuilder::operator=(const MessageBuilder &mb)

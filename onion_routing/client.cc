@@ -12,14 +12,17 @@ using namespace std;
 Client::Client(const string &pubkey, const string &privkey)
 {
     this->pubkey = (PLAINTEXT)read_file(pubkey, "rb");
+
     this->serv = 0;
     this->sock = 0;
 
     KEY_UTIL::get_key_hexdigest(this->pubkey, this->hexaddress);
 
     this->rsactx = CRYPTO::RSA_CRYPTO_new();
+
     CRYPTO::RSA_init_key_file(privkey, 0, 0, PRIVATE_KEY, this->rsactx);
     CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT);
+    CRYPTO::RSA_init_ctx(this->rsactx, SIGN);
 }
 
 int Client::setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx)
@@ -131,7 +134,7 @@ void *Client::data_listener(void *args)
         next_address = mp.get_parsed_next_address();
 
         INFO("Destination: ", next_address, (next_address == client_address ? " -> Match!" : " -> Don't match !!"));
-        INFO("Message content: ", mp.get_payload());
+        cout << "Message content: " << mp.get_payload() << "\n";
 
         mp.clear();
     }
@@ -275,7 +278,7 @@ int Client::create_connection(const string &host, const string &port, const stri
     return 0;
 }
 
-int Client::write_dest(MessageBuilder &mb, Route *route, bool first)
+int Client::write_dest(MessageBuilder &mb, Route *route)
 {
     Route *p = route;
 
@@ -292,7 +295,7 @@ int Client::write_dest(MessageBuilder &mb, Route *route, bool first)
         next = p->get_next();
         mb.set_next((next ? next : p)->get_keydigest());
 
-        if (mb.encrypt(p->get_aesctx()) < 0)
+        if (mb.encrypt(p) < 0)
         {
             return -1;
         }
@@ -313,11 +316,11 @@ int Client::handshake(Route *route)
     MessageBuilder mb;
     if (route != this->serv)
     {
-        mb.handshake(route->get_aesctx(), route->get_rsactx(), "");
+        mb.handshake(route->get_aesctx(), route->get_rsactx());
     }
     else
     {
-        mb.handshake(route->get_aesctx(), route->get_rsactx(), this->pubkey);
+        mb.handshake(route->get_aesctx(), route->get_rsactx(), this->rsactx, this->pubkey);
     }
 
     return this->write_dest(mb, route) < 0 ? -1 : 0;

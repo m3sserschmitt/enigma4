@@ -72,73 +72,114 @@ int MessageParser::decrypt(Connection *conn)
     return this->decrypt(ctx);
 }
 
+int MessageParser::handshake_decrypt_session_key(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
+{
+    BYTES key = 0;
+    int decrlen;
+
+    if ((decrlen = CRYPTO::RSA_decrypt(rsactx, this->get_payload_ptr(), MESSAGE_ENC_PUBKEY_SIZE, &key)) < 0)
+    {
+        delete[] key;
+        return -1;
+    }
+
+    if (CRYPTO::AES_setup_key(key, decrlen, aesctx) < 0 or CRYPTO::AES_init(0, 0, 0, 0, aesctx) < 0)
+    {
+        delete[] key;
+        return -1;
+    }
+
+    delete[] key;
+    return 0;
+}
+
+int MessageParser::handshake_decrypt_pubkey(AES_CRYPTO aesctx, RSA_CRYPTO rsactx)
+{
+    BYTES pubkey = 0;
+    SIZE encrlen = this->get_payload_size() - 2 * MESSAGE_ENC_PUBKEY_SIZE;
+    int decrlen;
+
+    if ((decrlen = CRYPTO::AES_decrypt(aesctx, this->get_payload_ptr() + MESSAGE_ENC_PUBKEY_SIZE, encrlen, &pubkey)) < 0)
+    {
+        delete[] pubkey;
+        return -1;
+    }
+
+    pubkey[decrlen] = 0;
+    this->parse((const CHAR *)pubkey);
+
+    delete[] pubkey;
+    string pubkey_hexdigest;
+
+    if (this->parsed_pubkey_exists())
+    {
+        const string &parsed_pubkey_pem = this->get_parsed_pubkey();
+
+        CRYPTO::RSA_init_key(parsed_pubkey_pem, 0, 0, PUBLIC_KEY, rsactx);
+        KEY_UTIL::get_key_hexdigest(this->get_parsed_pubkey(), pubkey_hexdigest);
+
+        (*this)["address"] = pubkey_hexdigest;
+    }
+
+    return 0;
+}
+
+int MessageParser::message_verify_signature(RSA_CRYPTO ctx)
+{
+    if (CRYPTO::RSA_init_ctx(ctx, VERIFY) < 0)
+    {
+        return -1;
+    }
+
+    BYTES signature_ptr = this->get_payload_ptr() + this->get_payload_size() - MESSAGE_ENC_PUBKEY_SIZE;
+    SIZE datalen = this->get_datalen() - MESSAGE_ENC_PUBKEY_SIZE;
+
+    bool authentic;
+    if (CRYPTO::RSA_verify(ctx, signature_ptr, MESSAGE_ENC_PUBKEY_SIZE, this->get_data(), datalen, authentic) < 0)
+    {
+        return -1;
+    }
+
+    return authentic ? 0 : -1;
+}
+
 int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
 {
-    if (not this->is_handshake() or not CRYPTO::RSA_decrypt_ready(rsactx))
+    if (not this->is_handshake())
     {
         return -1;
     }
 
     this->remove_id();
 
-    BYTES ptr = this->get_payload_ptr();
-    SIZE payload_size = this->get_payload_size();
-    SIZE remaining = payload_size;
-
-    BYTES key = 0;
-    string pubkey_hexdigest;
-    BYTES data = 0;
-
-    int decrlen;
-
-    int ret = 0;
-
-    if ((decrlen = CRYPTO::RSA_decrypt(rsactx, ptr, MESSAGE_ENC_PUBKEY_SIZE, &key)) < 0)
+    if (this->handshake_decrypt_session_key(rsactx, aesctx) < 0)
     {
-        ret = -1;
-        goto endfunc;
+        return -1;
     }
 
-    if (CRYPTO::AES_setup_key(key, decrlen, aesctx) < 0 or CRYPTO::AES_init(0, 0, 0, 0, aesctx) < 0)
+    if (this->get_payload_size() > 2 * MESSAGE_ENC_PUBKEY_SIZE)
     {
-        ret = -1;
-        goto endfunc;
+        RSA_CRYPTO verify_ctx = CRYPTO::RSA_CRYPTO_new();
+
+        if (this->handshake_decrypt_pubkey(aesctx, verify_ctx) < 0)
+        {
+            return -1;
+        }
+
+        if (this->message_verify_signature(verify_ctx) < 0)
+        {
+            return -1;
+        }
+
+        CRYPTO::RSA_CRYPTO_free(verify_ctx);
     }
 
-    ptr += MESSAGE_ENC_PUBKEY_SIZE;
-    remaining -= MESSAGE_ENC_PUBKEY_SIZE;
-
-    if(not remaining)
-    {
-        goto endfunc;
-    }
-
-    if ((decrlen = CRYPTO::AES_decrypt(aesctx, ptr, payload_size - MESSAGE_ENC_PUBKEY_SIZE, &data)) < 0)
-    {
-        ret = -1;
-        goto endfunc;
-    }
-
-    data[decrlen] = 0;
-    this->parse((const CHAR *)data);
-
-    if (this->key_exists("pubkey"))
-    {
-        KEY_UTIL::get_key_hexdigest((*this)["pubkey"], pubkey_hexdigest);
-        (*this)["address"] = pubkey_hexdigest;
-    }
-
-endfunc:
-
-    delete[] key;
-    delete[] data;
-
-    return ret;
+    return 0;
 }
 
 void MessageParser::remove_next()
 {
-    if(this->parsed_next_address_exists())
+    if (this->parsed_next_address_exists())
     {
         return;
     }
@@ -155,7 +196,7 @@ void MessageParser::remove_next()
 
 void MessageParser::remove_id()
 {
-    if(this->parsed_id_exists())
+    if (this->parsed_id_exists())
     {
         return;
     }

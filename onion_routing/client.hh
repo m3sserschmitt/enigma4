@@ -45,7 +45,7 @@ class Client
     static int decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes);
     static void *data_listener(void *node);
 
-    int write_dest(MessageBuilder &mb, Route *route, bool f = 1);
+    int write_dest(MessageBuilder &mb, Route *route);
 
     Client(const Client &c);
     const Client &operator=(const Client &c);

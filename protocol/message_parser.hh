@@ -39,6 +39,10 @@ class MessageParser : public Message
 
     void parse(const CHAR *data);
 
+    int handshake_decrypt_session_key(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
+    int handshake_decrypt_pubkey(AES_CRYPTO aesctx, RSA_CRYPTO rsactx);
+    int message_verify_signature(RSA_CRYPTO rsactx);
+
 public:
     MessageParser() : Message(){};
     MessageParser(const CHAR *data) : Message(data) {}
@@ -86,10 +90,12 @@ public:
     const std::string &get_parsed_id() { return this->parseddata["id"]; }
     const std::string &get_parsed_address() { return this->parseddata["address"]; }
     const std::string &get_parsed_next_address() { return this->parseddata["next"]; }
+    const std::string &get_parsed_pubkey() { return this->parseddata["pubkey"]; }
 
     bool parsed_id_exists() const { return this->key_exists("id"); }
     bool parsed_address_exists() const { return this->key_exists("address"); }
     bool parsed_next_address_exists() const { return this->key_exists("next"); }
+    bool parsed_pubkey_exists() const { return this->key_exists("pubkey"); }
 
     bool is_complete() const
     {

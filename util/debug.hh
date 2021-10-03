@@ -59,14 +59,18 @@ static stream debug_stream;
 template <class T>
 void print_debug_message(T t)
 {
+#ifdef DEBUG_ON
     debug_stream << t << "\n";
+#endif
 }
 
 template <typename T, class ... K>
 void print_debug_message(T t, K ... k)
 {
+#ifdef DEBUG_ON
     debug_stream << t;
     print_debug_message(k...);
+#endif
 }
 
 #define SUCCESS(...) print_debug_message(SUCCESS, __VA_ARGS__);
