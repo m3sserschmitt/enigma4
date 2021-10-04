@@ -2,7 +2,7 @@
 #define MESSAGE_PARSER_HH
 
 #include <map>
-#include <cryptography/cryptography.hh>
+#include "../libcryptography/include/cryptography.hh"
 
 #include "../onion_routing/route.hh"
 

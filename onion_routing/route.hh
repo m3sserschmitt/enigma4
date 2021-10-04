@@ -1,8 +1,8 @@
 #ifndef ROUTE_HH
 #define ROUTE_HH
 
-#include <cryptography/cryptography.hh>
-#include <cryptography/random.hh>
+#include "../libcryptography/include/cryptography.hh"
+
 #include <string.h>
 #include "../util/util.hh"
 

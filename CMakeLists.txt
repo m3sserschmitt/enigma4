@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.0.0)
 project(enigma4 VERSION 4.0.0)
 
 
+add_subdirectory(libcryptography)
+
+
 add_library(util SHARED util/cmd.cc util/system_time.cc util/util.cc)
 
 
@@ -30,7 +33,7 @@ add_executable(enigma4 enigma4/main.cc enigma4/server.cc)
 target_link_libraries(enigma4 onionr)
 
 
-add_executable(eclient eclient.cc)
+add_executable(eclient example/eclient.cc)
 target_link_libraries(eclient onionr)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})

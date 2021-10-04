@@ -1,8 +1,5 @@
 #include <string.h>
 
-#include <cryptography/random.hh>
-#include <cryptography/base64.hh>
-
 #include "./client.hh"
 
 #include "../util/debug.hh"

@@ -1,7 +1,7 @@
 #ifndef MESSAGE_BUILDER_HH
 #define MESSAGE_BUILDER_HH
 
-#include <cryptography/cryptography.hh>
+#include "../libcryptography/include/cryptography.hh"
 
 #include "message.hh"
 

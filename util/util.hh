@@ -3,7 +3,8 @@
 
 #include <string>
 #include <vector>
-#include <cryptography/types.hh>
+
+#include "../libcryptography/include/types.hh"
 
 const std::string to_lowercase(std::string str);
 

@@ -1,7 +1,7 @@
 #include "util.hh"
 #include <stdexcept>
 
-#include <cryptography/cryptography.hh>
+#include "../libcryptography/include/cryptography.hh"
 
 #include <string.h>
 

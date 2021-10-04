@@ -3,7 +3,7 @@
 
 #include <map>
 #include <string>
-#include <cryptography/cryptography.hh>
+#include "../libcryptography/include/cryptography.hh"
 
 class MessageParser;
 
