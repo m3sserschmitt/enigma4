@@ -1,0 +1,3 @@
+[submodule "libcryptography"]
+	path = libcryptography
+	url = https://github.com/m3sserschmitt/libcryptography.git
