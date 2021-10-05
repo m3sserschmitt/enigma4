@@ -5,10 +5,10 @@ project(enigma4 VERSION 4.0.0)
 add_subdirectory(libcryptography)
 
 
-add_library(util SHARED util/cmd.cc util/system_time.cc util/util.cc)
+add_library(util STATIC util/cmd.cc util/system_time.cc util/util.cc)
 
 
-add_library(essentials SHARED
+add_library(essentials STATIC
 networking/socket.cc 
 networking/tls_socket.cc 
 
@@ -16,10 +16,10 @@ protocol/message.cc
 protocol/message_builder.cc 
 protocol/message_parser.cc 
 )
-target_link_libraries(essentials util ssl cryptography)
+target_link_libraries(essentials util cryptography6 crypto)
 
 
-add_library(onionr SHARED 
+add_library(onionr STATIC 
 onion_routing/client.cc
 onion_routing/tls_client.cc
 onion_routing/onion_routing_app.cc
