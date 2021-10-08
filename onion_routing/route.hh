@@ -86,8 +86,8 @@ public:
         return base64key;
     }
 
-    const BYTE *get_keydigest() const { return this->keydigest; }
-    const CHAR *get_key_hexdigest() const { return this->key_hexdigest; }
+    const BYTE *get_pubkeydigest() const { return this->keydigest; }
+    const CHAR *get_pubkey_hexdigest() const { return this->key_hexdigest; }
 
     int set_id(const BYTE *id)
     {

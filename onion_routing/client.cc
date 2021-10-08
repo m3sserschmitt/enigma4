@@ -205,7 +205,7 @@ const string Client::setup_dest(const string &keyfile, Route **route, const BYTE
     //     dest_route->set_id(id);
     // }
 
-    const CHAR *hexdigest = dest_route->get_key_hexdigest();
+    const CHAR *hexdigest = dest_route->get_pubkey_hexdigest();
     // const CHAR *base64id = dest_route->encode_id();
 
     this->routes[hexdigest] = dest_route;
@@ -217,7 +217,7 @@ const string Client::setup_dest(const string &keyfile, Route **route, const BYTE
     }
 
     // delete[] base64id;
-    return dest_route->get_key_hexdigest();
+    return dest_route->get_pubkey_hexdigest();
 }
 
 const string Client::add_node(const std::string &keyfile, const std::string &last_address, bool identify, bool make_new_session)
@@ -305,7 +305,7 @@ int Client::write_dest(MessageBuilder &mb, Route *route)
     for (; p; p = p->get_previous())
     {
         next = p->get_next();
-        mb.set_next((next ? next : p)->get_keydigest());
+        mb.set_next((next ? next : p)->get_pubkeydigest());
 
         if (mb.encrypt(p) < 0)
         {
@@ -338,6 +338,20 @@ int Client::handshake(Route *route, bool add_pubkey)
     return this->write_dest(mb, route) < 0 ? -1 : 0;
 }
 
+void Client::cleanup_circuit(Route *route)
+{
+    Route *p = route;
+
+    for(; p; p = p->get_next())
+    {
+        if(route != this->serv)
+        {
+            this->routes.erase(route->get_pubkey_hexdigest());
+            delete p;
+        }
+    }
+}
+
 int Client::exit_circuit(const string &address)
 {
     Route *route = this->routes[address];
@@ -350,7 +364,11 @@ int Client::exit_circuit(const string &address)
     MessageBuilder mb;
     mb.exit_circuit();
 
-    return this->write_dest(mb, route);
+    int result = this->write_dest(mb, route);
+
+    this->cleanup_circuit(route);
+
+    return result;
 }
 
 int Client::write_data(const BYTE *data, SIZE datalen, const string &address)

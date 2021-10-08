@@ -47,6 +47,8 @@ class Client
 
     int write_dest(MessageBuilder &mb, Route *route);
 
+    void cleanup_circuit(Route *route);
+
     Client(const Client &c);
     const Client &operator=(const Client &c);
 
@@ -76,7 +78,7 @@ public:
      * 
      * @return const std::string Server address.
      */
-    const std::string get_server_address() const { return this->serv->get_key_hexdigest(); }
+    const std::string get_server_address() const { return this->serv->get_pubkey_hexdigest(); }
 
     /**
      * @brief Create a connection to specified server.
