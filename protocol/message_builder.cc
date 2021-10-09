@@ -34,7 +34,7 @@ int MessageBuilder::encrypt(Route *route)
     return this->encrypt(route->get_aesctx());
 }
 
-int MessageBuilder::handshake_setup_session_key(AES_CRYPTO aesctx, RSA_CRYPTO rsactx)
+int MessageBuilder::handshake_setup_session_key(Route *route, bool add_all_keys)
 {
     BYTES key = 0;
     BYTES encrkey = 0;
@@ -42,13 +42,13 @@ int MessageBuilder::handshake_setup_session_key(AES_CRYPTO aesctx, RSA_CRYPTO rs
 
     int ret = 0;
 
-    if (CRYPTO::AES_read_key(aesctx, 32, &key) < 0)
+    if (CRYPTO::AES_read_key(route->get_aesctx(), 32, &key) < 0)
     {
         ret = -1;
         goto endfunc;
     }
 
-    if ((encrlen = CRYPTO::RSA_encrypt(rsactx, key, 32, &encrkey)) < 0)
+    if ((encrlen = CRYPTO::RSA_encrypt(route->get_rsactx(), key, 32, &encrkey)) < 0)
     {
         ret = -1;
         goto endfunc;
@@ -99,16 +99,16 @@ int MessageBuilder::sign_message(RSA_CRYPTO ctx)
     return 0;
 }
 
-int MessageBuilder::handshake(AES_CRYPTO aesctx, RSA_CRYPTO encrrsactx, RSA_CRYPTO signrsactx, const string &pubkeypem)
+int MessageBuilder::handshake(Route *route, RSA_CRYPTO signrsactx, const string &pubkeypem, bool add_all_keys)
 {
-    if (this->handshake_setup_session_key(aesctx, encrrsactx) < 0)
+    if (this->handshake_setup_session_key(route, add_all_keys) < 0)
     {
         return -1;
     }
 
     if (pubkeypem.size())
     {
-        if (this->handshake_setup_pubkey(aesctx, pubkeypem) < 0)
+        if (this->handshake_setup_pubkey(route->get_aesctx(), pubkeypem) < 0)
         {
             return -1;
         }

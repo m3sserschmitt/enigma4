@@ -31,7 +31,8 @@ class MessageBuilder : public Message
 
     int encrypt(AES_CRYPTO ctx);
 
-    int handshake_setup_session_key(AES_CRYPTO aesctx, RSA_CRYPTO rsactx);
+    int handshake_setup_session_key(Route *route, bool add_all_keys);
+    // int handshake_setup_session_key(AES_CRYPTO aesctx, RSA_CRYPTO rsactx);
     int handshake_setup_pubkey(AES_CRYPTO ctx, const std::string &pubkeypem);
     int sign_message(RSA_CRYPTO ctx);
 
@@ -61,7 +62,9 @@ public:
 
     int encrypt(Route *route);
 
-    int handshake(AES_CRYPTO aesctx, RSA_CRYPTO encrrsactx, RSA_CRYPTO signrsactx = 0, const std::string &pubkeypem = "");
+    // int handshake(AES_CRYPTO aesctx, RSA_CRYPTO encrrsactx, RSA_CRYPTO signrsactx = 0, const std::string &pubkeypem = "");
+    int handshake(Route *route, RSA_CRYPTO signrsactx = 0, const std::string &pubkeypem = "", bool add_all_keys = 0);
+    
     void exit_circuit() { this->set_message_type(MESSAGE_EXIT); };
 
     MessageBuilder &operator=(const MessageBuilder &mb);

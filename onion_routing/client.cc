@@ -22,6 +22,29 @@ Client::Client(const string &pubkey, const string &privkey)
     CRYPTO::RSA_init_ctx(this->rsactx, SIGN);
 }
 
+Client::~Client()
+{
+    std::map<std::string, Route *>::iterator it = routes.begin();
+    std::map<std::string, Route *>::iterator it_end = routes.end();
+
+    for (; it != it_end; it++)
+    {
+        if (it->second != this->serv)
+        {
+            delete it->second;
+        }
+    }
+
+    delete this->sock;
+    delete this->serv;
+
+    CRYPTO::RSA_CRYPTO_free(this->rsactx);
+
+    this->sock = 0;
+    this->serv = 0;
+    this->rsactx = 0;
+}
+
 int Client::setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx)
 {
     Route *newroute = new Route;
@@ -184,39 +207,17 @@ const string Client::setup_dest(const string &keyfile, Route **route, const BYTE
         return "";
     }
 
-    if (id)
-    {
-        dest_route->use_id(id);
-    }
-    else
-    {
-        dest_route->set_id(0);
-    }
-
-    // if (this->serv)
-    // {
-    //     if (dest_route->set_id(this->serv->get_id()) < 0)
-    //     {
-    //         return "";
-    //     }
-    // }
-    // else
-    // {
-    //     dest_route->set_id(id);
-    // }
+    dest_route->set_id(id);
 
     const CHAR *hexdigest = dest_route->get_pubkey_hexdigest();
-    // const CHAR *base64id = dest_route->encode_id();
 
     this->routes[hexdigest] = dest_route;
-    // this->routes[base64id] = dest_route;
 
     if (route)
     {
         *route = dest_route;
     }
 
-    // delete[] base64id;
     return dest_route->get_pubkey_hexdigest();
 }
 
@@ -318,7 +319,7 @@ int Client::write_dest(MessageBuilder &mb, Route *route)
     return this->sock->write_data(mb) < 0 ? -1 : 0;
 }
 
-int Client::handshake(Route *route, bool add_pubkey)
+int Client::handshake(Route *route, bool add_pubkey, bool add_all_keys)
 {
     if (not route)
     {
@@ -328,11 +329,11 @@ int Client::handshake(Route *route, bool add_pubkey)
     MessageBuilder mb;
     if (add_pubkey)
     {
-        mb.handshake(route->get_aesctx(), route->get_rsactx(), this->rsactx, this->pubkey);
+        mb.handshake(route, this->rsactx, this->pubkey);
     }
     else
     {
-        mb.handshake(route->get_aesctx(), route->get_rsactx());
+        mb.handshake(route);
     }
 
     return this->write_dest(mb, route) < 0 ? -1 : 0;
@@ -340,14 +341,16 @@ int Client::handshake(Route *route, bool add_pubkey)
 
 void Client::cleanup_circuit(Route *route)
 {
-    Route *p = route;
-
-    for(; p; p = p->get_next())
+    Route *next;
+    for (Route *p = route->get_previous(); p; p = p->get_previous())
     {
-        if(route != this->serv)
+        next = p->get_next();
+
+        if (next)
         {
-            this->routes.erase(route->get_pubkey_hexdigest());
-            delete p;
+            this->routes.erase(next->get_pubkey_hexdigest());
+            delete next;
+            next = 0;
         }
     }
 }

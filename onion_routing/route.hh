@@ -99,11 +99,6 @@ public:
 
         return CRYPTO::rand_bytes(16, &this->id) < 0 ? -1 : 0;
     }
-    void use_id(const BYTE *id)
-    {
-        delete[] this->id;
-        this->id = const_cast<BYTE *>(id);
-    }
 
     const CHAR *encode_id() const
     {

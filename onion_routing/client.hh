@@ -37,7 +37,7 @@ class Client
 
     const std::string setup_dest(const std::string &keyfile, Route **route, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
 
-    int handshake(Route *route, bool add_pubkey = true);
+    int handshake(Route *route, bool add_pubkey = true, bool add_all_keys = false);
 
     static int setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx);
     static int action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, std::map<std::string, Route *> *routes);
@@ -54,17 +54,7 @@ class Client
 
 public:
     Client(const std::string &pubkey, const std::string &privkey);
-    ~Client()
-    {
-        delete this->sock;
-        delete this->serv;
-
-        CRYPTO::RSA_CRYPTO_free(this->rsactx);
-
-        this->sock = 0;
-        this->serv = 0;
-        this->rsactx = 0;
-    }
+    ~Client();
 
     /**
      * @brief Get the client hexaddress.
