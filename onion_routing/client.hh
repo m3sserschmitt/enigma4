@@ -93,7 +93,7 @@ public:
      * is added into a circuit).
      * @return const std::string Address of newly added node. 
      */
-    const std::string add_node(const std::string &keyfile, const std::string &last_address, bool identify = false, bool make_new_session = false);
+    const std::string add_node(const std::string &keyfile, const std::string &last_address, bool identify = false, bool add_keys = false, bool make_new_session = false);
 
     /**
      * @brief Write data to specified address.

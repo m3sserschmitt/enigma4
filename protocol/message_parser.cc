@@ -77,7 +77,7 @@ int MessageParser::handshake_decrypt_session_key(RSA_CRYPTO rsactx, AES_CRYPTO a
     BYTES key = 0;
     int decrlen;
 
-    if ((decrlen = CRYPTO::RSA_decrypt(rsactx, this->get_payload_ptr(), MESSAGE_ENC_PUBKEY_SIZE, &key)) < 0)
+    if ((decrlen = CRYPTO::RSA_decrypt(rsactx, this->get_payload_ptr() + 16, MESSAGE_ENC_PUBKEY_SIZE, &key)) < 0)
     {
         delete[] key;
         return -1;
@@ -96,10 +96,10 @@ int MessageParser::handshake_decrypt_session_key(RSA_CRYPTO rsactx, AES_CRYPTO a
 int MessageParser::handshake_decrypt_pubkey(AES_CRYPTO aesctx, RSA_CRYPTO rsactx)
 {
     BYTES pubkey = 0;
-    SIZE encrlen = this->get_payload_size() - 2 * MESSAGE_ENC_PUBKEY_SIZE;
+    SIZE encrlen = this->get_payload_size() - 2 * MESSAGE_ENC_PUBKEY_SIZE - 16;
     int decrlen;
 
-    if ((decrlen = CRYPTO::AES_decrypt(aesctx, this->get_payload_ptr() + MESSAGE_ENC_PUBKEY_SIZE, encrlen, &pubkey)) < 0)
+    if ((decrlen = CRYPTO::AES_decrypt(aesctx, this->get_payload_ptr()+ 16 + MESSAGE_ENC_PUBKEY_SIZE, encrlen, &pubkey)) < 0)
     {
         delete[] pubkey;
         return -1;
@@ -131,14 +131,19 @@ int MessageParser::message_verify_signature(RSA_CRYPTO ctx)
         return -1;
     }
 
+    // SIZE payload_size = this->get_payload_size();
+    // this->set_payload_size(payload_size - MESSAGE_ENC_PUBKEY_SIZE);
     BYTES signature_ptr = this->get_payload_ptr() + this->get_payload_size() - MESSAGE_ENC_PUBKEY_SIZE;
-    SIZE datalen = this->get_datalen() - MESSAGE_ENC_PUBKEY_SIZE;
+    SIZE datasize = this->get_datalen() - MESSAGE_ENC_PUBKEY_SIZE;
 
     bool authentic;
-    if (CRYPTO::RSA_verify(ctx, signature_ptr, MESSAGE_ENC_PUBKEY_SIZE, this->get_data(), datalen, authentic) < 0)
+    if (CRYPTO::RSA_verify(ctx, signature_ptr, MESSAGE_ENC_PUBKEY_SIZE, this->get_data(), datasize, authentic) < 0)
     {
+        // this->set_payload_size(payload_size + MESSAGE_ENC_PUBKEY_SIZE);
         return -1;
     }
+
+    // this->set_payload_size(payload_size + MESSAGE_ENC_PUBKEY_SIZE);
 
     return authentic ? 0 : -1;
 }
@@ -150,7 +155,7 @@ int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
         return -1;
     }
 
-    this->remove_id();
+    // this->remove_id();
 
     if (this->handshake_decrypt_session_key(rsactx, aesctx) < 0)
     {

@@ -49,7 +49,7 @@ int main(int argc, char **argv)
     vector<string> entries = split(circuit_file_content, "\n", -1);
     vector<string> tokens = split(entries[0], " ", -1);
 
-    if(tokens.size() != 3)
+    if (tokens.size() != 3)
     {
         cout << "[-] Error: server connection failed.\n";
         return EXIT_FAILURE;
@@ -60,14 +60,23 @@ int main(int argc, char **argv)
     string last_address = client.get_server_address();
     cout << "[+] Server address: " << last_address << "\n";
 
-    for (size_t k = 1; k < entries.size(); k++)
+    SIZE circuit_length = entries.size();
+
+    for (size_t k = 1; k < circuit_length; k++)
     {
-        if(not entries[k].size())
+        if (not entries[k].size())
         {
             continue;
         }
 
-        last_address = client.add_node(entries[k], last_address);
+        if (k == circuit_length - 1)
+        {
+            last_address = client.add_node(entries[k], last_address, 1, 1);
+        }
+        else
+        {
+            last_address = client.add_node(entries[k], last_address);
+        }
     }
 
     string input;

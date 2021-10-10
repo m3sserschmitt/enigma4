@@ -105,6 +105,7 @@ public:
     int decrypt(Route *route);
     int decrypt(Connection *conn);
 
+    int handshake(RSA_CRYPTO rsactx, Route *route);
     int handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
 
     void remove_next();

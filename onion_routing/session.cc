@@ -13,7 +13,12 @@ int SessionManager::setup(RSA_CRYPTO rsactx, MessageParser &mp)
 
     CRYPTO::AES_ctx_dup(ctx, this->aesctx);
 
-    mp.handshake(rsactx, ctx);
+    if(mp.handshake(rsactx, ctx) < 0)
+    {
+        return -1;
+    }
+
+    mp.remove_id();
 
     this->set(mp.get_parsed_id(), ctx);
 

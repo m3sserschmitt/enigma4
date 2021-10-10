@@ -127,10 +127,10 @@ int OnionRoutingApp::try_handshake(MessageParser &mp, Connection *conn)
         return -1;
     }
 
-    mp.remove_id();
+    // mp.remove_id();
 
-    NEWLINE();
-    INFO("Handshake received; Session ID: ", mp.get_parsed_id());
+    // NEWLINE();
+    // INFO("Handshake received; Session ID: ", mp.get_parsed_id());
 
     if (conn->add_session(mp, OnionRoutingApp::rsactx) < 0)
     {

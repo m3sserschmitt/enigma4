@@ -17,9 +17,20 @@ Client::Client(const string &pubkey, const string &privkey)
 
     this->rsactx = CRYPTO::RSA_CRYPTO_new();
 
-    CRYPTO::RSA_init_key_file(privkey, 0, 0, PRIVATE_KEY, this->rsactx);
-    CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT);
-    CRYPTO::RSA_init_ctx(this->rsactx, SIGN);
+    if (CRYPTO::RSA_init_key_file(privkey, 0, 0, PRIVATE_KEY, this->rsactx) < 0)
+    {
+        FAILURE("Client Private Key initialization failed.");
+    }
+
+    if (CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT) < 0)
+    {
+        FAILURE("Client Private Key decryption initialization failed.")
+    }
+
+    if (CRYPTO::RSA_init_ctx(this->rsactx, SIGN) < 0)
+    {
+        FAILURE("Client Private Key signing initialization failed.");
+    }
 }
 
 Client::~Client()
@@ -56,6 +67,8 @@ int Client::setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, s
         return -1;
     }
 
+    mp.remove_id();
+
     routes->insert(pair<string, Route *>(mp.get_parsed_id(), newroute));
 
     return 0;
@@ -78,26 +91,29 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
 
 int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<string, Route *> *routes)
 {
-    mp.remove_id();
-    const string &session_id = mp.get_parsed_id();
+    // mp.remove_id();
+    // const string &session_id = mp.get_parsed_id();
 
     if (mp.is_handshake())
     {
         NEWLINE();
-        INFO("Handshake received for session ID: ", session_id);
+        // INFO("Handshake received for session ID: ", session_id);
 
         if (setup_session_from_handshake(mp, rsactx, routes, aesctx) < 0)
         {
-            FAILURE("Handshake failed for session ID: ", session_id);
+            // FAILURE("Handshake failed for session ID: ", session_id);
             return 0;
         }
 
-        INFO("Handshake completed for session ID: ", session_id);
+        INFO("Handshake completed for session ID: ", mp.get_parsed_id());
 
         return 0;
     }
     else if (mp.is_exit())
     {
+        mp.remove_id();
+        const string &session_id = mp.get_parsed_id();
+        
         INFO("EXIT received for session ID: ", session_id);
 
         Route *route = (*routes)[session_id];
@@ -133,8 +149,8 @@ void *Client::data_listener(void *args)
     {
         NEWLINE();
 
-        mp.remove_id();
-        INFO("Data received; session ID: ", mp.get_parsed_id());
+        // mp.remove_id();
+        // INFO("Data received; session ID: ", mp.get_parsed_id());
 
         if (action(mp, rsactx, aesctx, routes) == 0)
         {
@@ -221,7 +237,7 @@ const string Client::setup_dest(const string &keyfile, Route **route, const BYTE
     return dest_route->get_pubkey_hexdigest();
 }
 
-const string Client::add_node(const std::string &keyfile, const std::string &last_address, bool identify, bool make_new_session)
+const string Client::add_node(const std::string &keyfile, const std::string &last_address, bool identify, bool add_keys, bool make_new_session)
 {
     Route *last_route = routes[last_address];
 
@@ -250,7 +266,7 @@ const string Client::add_node(const std::string &keyfile, const std::string &las
     new_route->set_previous(last_route);
     last_route->set_next(new_route);
 
-    this->handshake(new_route, identify);
+    this->handshake(new_route, identify, add_keys);
 
     return dest_address;
 }
@@ -297,7 +313,7 @@ int Client::write_dest(MessageBuilder &mb, Route *route)
 
     if (mb.is_handshake())
     {
-        mb.set_id(p->get_id());
+        // mb.set_id(p->get_id());
         p = p->get_previous();
     }
 
@@ -329,7 +345,7 @@ int Client::handshake(Route *route, bool add_pubkey, bool add_all_keys)
     MessageBuilder mb;
     if (add_pubkey)
     {
-        mb.handshake(route, this->rsactx, this->pubkey);
+        mb.handshake(route, this->rsactx, this->pubkey, add_all_keys);
     }
     else
     {

@@ -36,29 +36,46 @@ int MessageBuilder::encrypt(Route *route)
 
 int MessageBuilder::handshake_setup_session_key(Route *route, bool add_all_keys)
 {
-    BYTES key = 0;
-    BYTES encrkey = 0;
+    BYTES keys = new BYTE[32 * 10];
+    BYTES encrkeys = 0;
     int encrlen;
 
     int ret = 0;
 
-    if (CRYPTO::AES_read_key(route->get_aesctx(), 32, &key) < 0)
+    BYTES keys_ptr = keys;
+
+    if (add_all_keys)
+    {    
+        for (Route *p = route; p; p = p->get_previous(), keys_ptr += 32)
+        {
+            if (CRYPTO::AES_read_key(route->get_aesctx(), 32, &keys_ptr) < 0)
+            {
+                ret = -1;
+                goto endfunc;
+            }
+        }
+    }
+    else
+    {
+        if (CRYPTO::AES_read_key(route->get_aesctx(), 32, &keys_ptr) < 0)
+        {
+            ret = -1;
+            goto endfunc;
+        }
+    }
+
+    if ((encrlen = CRYPTO::RSA_encrypt(route->get_rsactx(), keys, (int)(keys_ptr - keys) + 32, &encrkeys)) < 0)
     {
         ret = -1;
         goto endfunc;
     }
 
-    if ((encrlen = CRYPTO::RSA_encrypt(route->get_rsactx(), key, 32, &encrkey)) < 0)
-    {
-        ret = -1;
-        goto endfunc;
-    }
-
-    this->append_payload_end(encrkey, encrlen);
+    this->append_payload_end(route->get_id(), 16);
+    this->append_payload_end(encrkeys, encrlen);
 
 endfunc:
-    delete[] key;
-    delete[] encrkey;
+    delete[] keys;
+    delete[] encrkeys;
 
     return ret;
 }
@@ -87,12 +104,18 @@ int MessageBuilder::sign_message(RSA_CRYPTO ctx)
     BYTES signature = 0;
     int signlen;
 
-    if ((signlen = CRYPTO::RSA_sign(ctx, this->get_data(), this->get_datalen(), &signature)) < 0)
+    SIZE datasize = this->get_datalen();
+    SIZE payload_size = this->get_payload_size();
+
+    this->set_payload_size(payload_size + MESSAGE_ENC_PUBKEY_SIZE);
+
+    if ((signlen = CRYPTO::RSA_sign(ctx, this->get_data(), datasize, &signature)) < 0)
     {
         delete[] signature;
         return -1;
     }
 
+    this->set_payload_size(this->get_payload_size() - MESSAGE_ENC_PUBKEY_SIZE);
     this->append_payload_end(signature, signlen);
 
     delete[] signature;
@@ -112,6 +135,8 @@ int MessageBuilder::handshake(Route *route, RSA_CRYPTO signrsactx, const string 
         {
             return -1;
         }
+
+        this->set_message_type(MESSAGE_HANDSHAKE);
 
         if (this->sign_message(signrsactx) < 0)
         {
