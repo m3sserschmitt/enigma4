@@ -82,7 +82,6 @@ endfunc:
 
 int MessageBuilder::handshake_setup_pubkey(AES_CRYPTO ctx, const string &pubkeypem)
 {
-
     BYTES encrdata = 0;
     int encrlen;
 
@@ -104,18 +103,16 @@ int MessageBuilder::sign_message(RSA_CRYPTO ctx)
     BYTES signature = 0;
     int signlen;
 
-    SIZE datasize = this->get_datalen();
-    SIZE payload_size = this->get_payload_size();
+    SIZE current_datalen = this->get_datalen();
+    this->increase_payload_size(MESSAGE_ENC_PUBKEY_SIZE);
 
-    this->set_payload_size(payload_size + MESSAGE_ENC_PUBKEY_SIZE);
-
-    if ((signlen = CRYPTO::RSA_sign(ctx, this->get_data(), datasize, &signature)) < 0)
+    if ((signlen = CRYPTO::RSA_sign(ctx, this->get_data(), current_datalen, &signature)) < 0)
     {
         delete[] signature;
         return -1;
     }
 
-    this->set_payload_size(this->get_payload_size() - MESSAGE_ENC_PUBKEY_SIZE);
+    this->decrease_payload_size(MESSAGE_ENC_PUBKEY_SIZE);
     this->append_payload_end(signature, signlen);
 
     delete[] signature;

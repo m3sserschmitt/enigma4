@@ -31,6 +31,17 @@ protected:
         (this->data + MESSAGE_SIZE_SECTION_OFFSET)[1] = size;
         this->datalen = size + MESSAGE_HEADER_SIZE;
     }
+
+    void increase_payload_size(SIZE size)
+    {
+        this->set_payload_size(this->get_payload_size() + size);
+    }
+
+    void decrease_payload_size(SIZE size)
+    {
+        this->set_payload_size(this->get_payload_size() - size);
+    }
+
     void set_message_type(int algorithm)
     {
         *(this->data + MESSAGE_ENC_ALGORITHM_OFFSET) = algorithm;
@@ -102,7 +113,7 @@ public:
 
     bool is_handshake() const { return this->get_message_type() == MESSAGE_HANDSHAKE; }
     bool is_exit() const { return this->get_message_type() == MESSAGE_EXIT; }
-    
+
     const BYTE *get_data(SIZE &datalen) const
     {
         datalen = this->datalen;

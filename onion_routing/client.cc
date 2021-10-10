@@ -74,6 +74,26 @@ int Client::setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, s
     return 0;
 }
 
+int Client::exit_signal(MessageParser &mp, std::map<string, Route *> *routes)
+{
+    mp.remove_id();
+    const string &session_id = mp.get_parsed_id();
+
+    Route *route = (*routes)[session_id];
+
+    if (not route)
+    {
+        return -1;
+    }
+
+    delete route;
+    route = 0;
+
+    routes->erase(session_id);
+
+    return 0;
+}
+
 int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<string, Route *> *routes)
 {
     mp.remove_id();
@@ -91,18 +111,11 @@ int Client::decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, map<s
 
 int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<string, Route *> *routes)
 {
-    // mp.remove_id();
-    // const string &session_id = mp.get_parsed_id();
-
     if (mp.is_handshake())
     {
-        NEWLINE();
-        // INFO("Handshake received for session ID: ", session_id);
-
         if (setup_session_from_handshake(mp, rsactx, routes, aesctx) < 0)
         {
-            // FAILURE("Handshake failed for session ID: ", session_id);
-            return 0;
+            return -1;
         }
 
         INFO("Handshake completed for session ID: ", mp.get_parsed_id());
@@ -111,22 +124,17 @@ int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<
     }
     else if (mp.is_exit())
     {
-        mp.remove_id();
-        const string &session_id = mp.get_parsed_id();
-        
-        INFO("EXIT received for session ID: ", session_id);
+        if (exit_signal(mp, routes) < 0)
+        {
+            return -1;
+        }
 
-        Route *route = (*routes)[session_id];
-        delete route;
-
-        routes->erase(session_id);
-
-        INFO("Session with ID ", session_id, " erased.");
+        INFO("Session with ID ", mp.get_parsed_id(), " erased.");
 
         return 0;
     }
 
-    return -1;
+    return 1;
 }
 
 void *Client::data_listener(void *args)
@@ -149,9 +157,6 @@ void *Client::data_listener(void *args)
     {
         NEWLINE();
 
-        // mp.remove_id();
-        // INFO("Data received; session ID: ", mp.get_parsed_id());
-
         if (action(mp, rsactx, aesctx, routes) == 0)
         {
             mp.clear();
@@ -164,10 +169,12 @@ void *Client::data_listener(void *args)
             continue;
         }
 
-        next_address = mp.get_parsed_next_address();
+        if(mp.get_parsed_next_address() != client_address)
+        {
+            WARNING("Incoming message destination don't match local address.");
+        }
 
-        INFO("Destination for session ID ", mp.get_parsed_id(), ": ", next_address, (next_address == client_address ? " -> Match!" : " -> Don't match !!"));
-        cout << "Message content: " << mp.get_payload() << "\n";
+        INFO("Message received; message content: ", mp.get_payload());
 
         mp.clear();
     }

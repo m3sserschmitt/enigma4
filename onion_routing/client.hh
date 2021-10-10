@@ -39,6 +39,7 @@ class Client
 
     int handshake(Route *route, bool add_pubkey = true, bool add_all_keys = false);
 
+    static int exit_signal(MessageParser &mp, std::map<std::string, Route *> *routes);
     static int setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx);
     static int action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, std::map<std::string, Route *> *routes);
 
