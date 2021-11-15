@@ -14,10 +14,32 @@ class Socket
     BYTES buffer;
     int delta;
 
-    ssize_t read_buffer(MessageParser &mp);
-    virtual ssize_t read_data()
+    ssize_t read_local_buffer(MessageParser &mp);
+
+    virtual ssize_t read_data(MessageParser &mp)
     {
-        return read(this->fd, this->buffer + (this->delta > 0 ? this->delta : 0), SOCKET_MAX_BUFFER_SIZE);
+        ssize_t bytes_read = read(this->fd, this->buffer, SOCKET_MAX_BUFFER_SIZE);
+
+        if (bytes_read < 0)
+        {
+            return -1;
+        }
+
+        SIZE parsed;
+
+        if (not mp.get_payload_size())
+        {
+            parsed = mp.update(this->buffer, bytes_read);
+        }
+        else
+        {
+            parsed = mp.append_payload(this->buffer, bytes_read);
+        }
+
+        this->increase_delta(bytes_read - parsed);
+        this->rebase_data(parsed);
+
+        return parsed;
     }
 
     Socket(const Socket &);
@@ -28,6 +50,22 @@ protected:
 
     void set_delta(int delta) { this->delta = delta; }
     int get_delta() { return this->delta; }
+
+    void increase_delta(SIZE count)
+    {
+        this->delta += count;
+    }
+
+    void decrease_delta(SIZE count)
+    {
+        this->delta -= count;
+    }
+
+
+    void rebase_data(SIZE count)
+    {
+        memcpy(this->buffer, this->buffer + count, SOCKET_MAX_BUFFER_SIZE - count);
+    }
 
 public:
     Socket() : fd(-1),
@@ -51,7 +89,9 @@ public:
     virtual int create_connection(const std::string &host, const std::string &port);
 
     virtual void wrap(int fd) { this->fd = fd; };
+
     int get_fd() const { return this->fd; }
+
     void close_fd()
     {
         close(this->fd);
@@ -61,13 +101,16 @@ public:
     bool is_connected() const { return this->fd > 0; }
 
     virtual ssize_t write_data(const MessageBuilder &mb) const;
+
     virtual ssize_t write_data(const BYTE *data, SIZE datalen) const;
-    ssize_t read_data(MessageParser &mp);
+
+    ssize_t read_network_data(MessageParser &mp);
 
     virtual const CHAR *get_cipher() const { return "(NONE)"; }
+
     static SIZE get_max_socket_buff_read() { return SOCKET_MAX_BUFFER_SIZE; }
 
-    Socket *make_socket_copy() const 
+    Socket *make_socket_copy() const
     {
         Socket *copy = new Socket;
 

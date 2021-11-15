@@ -50,7 +50,7 @@ public:
     }
     const std::string &get_address() const { return this->address; }
 
-    ssize_t read_data(MessageParser &mp) const { return this->sock->read_data(mp); }
+    ssize_t read_data(MessageParser &mp) const { return this->sock->read_network_data(mp); }
     ssize_t write_data(const BYTE *data, SIZE datalen) const { return this->sock->write_data(data, datalen); }
 };
 

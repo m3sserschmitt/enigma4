@@ -153,7 +153,7 @@ void *Client::data_listener(void *args)
 
     MessageParser mp;
 
-    while (sock->read_data(mp) > 0)
+    while (sock->read_network_data(mp) > 0)
     {
         NEWLINE();
 

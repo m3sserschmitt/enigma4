@@ -24,17 +24,6 @@ class MessageParser : public Message
         memset(payload + payload_size, 0, len);
     }
 
-    static SIZE read_payload_size(const BYTE *data)
-    {
-        const BYTE *payload_size_ptr = data + MESSAGE_SIZE_SECTION_OFFSET;
-        SIZE payload_size = *payload_size_ptr;
-
-        payload_size <<= 8;
-        payload_size |= *(payload_size_ptr + 1);
-
-        return payload_size;
-    }
-
     int decrypt(AES_CRYPTO ctx);
 
     void parse(const CHAR *data);
@@ -50,6 +39,22 @@ public:
     MessageParser(const std::string &data) : Message(data) {}
     MessageParser(const MessageParser &mp) : Message(mp), parseddata(mp.parseddata){};
     ~MessageParser(){};
+
+    static SIZE read_payload_size(const BYTE *data)
+    {
+        const BYTE *payload_size_ptr = data + MESSAGE_SIZE_SECTION_OFFSET;
+        SIZE payload_size = *payload_size_ptr;
+
+        payload_size <<= 8;
+        payload_size |= *(payload_size_ptr + 1);
+
+        return payload_size;
+    }
+
+    static SIZE compute_total_message_size(const BYTE *data)
+    {
+        return MessageParser::read_payload_size(data) + MESSAGE_HEADER_SIZE;
+    }
 
     SIZE update(const BYTE *data, SIZE datalen)
     {
@@ -67,10 +72,15 @@ public:
     {
         SIZE payload_size = this->get_payload_size();
 
-        datalen = std::min(this->get_required_size(), datalen);
+        // if(payload_size)
+        // {
+            datalen = std::min(this->get_required_size(), datalen);
+        // }
+        
 
         memcpy(this->get_payload_ptr() + payload_size, data, datalen);
         this->set_payload_size(payload_size + datalen);
+
         return datalen;
     }
     SIZE get_payload_size() const
@@ -99,7 +109,7 @@ public:
 
     bool is_complete() const
     {
-        return not this->get_required_size();
+        return this->get_payload_size() and not this->get_required_size();
     }
 
     int decrypt(Route *route);

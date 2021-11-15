@@ -60,57 +60,28 @@ ssize_t Socket::write_data(const BYTE *data, SIZE datalen) const
     return write(this->fd, data, datalen);
 }
 
-ssize_t Socket::read_buffer(MessageParser &mp)
+ssize_t Socket::read_local_buffer(MessageParser &mp)
 {
-    SIZE buffread = 0;
-    if (this->delta > 0)
+    SIZE bytes_read = 0;
+
+    if (this->get_delta() > 0)
     {
-        buffread = mp.update(this->buffer, this->delta);
-        this->delta -= buffread;
+        bytes_read = mp.update(this->buffer, this->get_delta());
+        this->decrease_delta(bytes_read);
     }
 
-    return buffread;
+    return bytes_read;
 }
 
-ssize_t Socket::read_data(MessageParser &mp)
+ssize_t Socket::read_network_data(MessageParser &mp)
 {
-    ssize_t inlen;
-    SIZE parsed = this->read_buffer(mp);
+    // if more data read previously, then read data from local buffer
+    this->read_local_buffer(mp);
 
-    if (parsed and mp.is_complete())
+    while(not mp.is_complete())
     {
-        return parsed;
+        this->read_data(mp);
     }
 
-    while ((inlen = this->read_data()) > 0)
-    {
-        if (this->delta < 0) // if not enough data read previously
-        {
-            // append to payload in order to complete message;
-            parsed = mp.append_payload(this->buffer, inlen);
-            this->delta += inlen;
-        }
-        else
-        {
-            parsed = mp.update(this->buffer, inlen);
-            this->delta = -1 * mp.get_required_size();
-
-            if (not this->delta)
-            {
-                this->delta = inlen - parsed;
-            }
-        }
-
-        if (delta > 0)
-        {
-            memcpy(this->buffer, this->buffer + parsed, this->delta);
-        }
-
-        if (mp.is_complete())
-        {
-            break;
-        }
-    }
-
-    return inlen < 0 ? -1 : parsed;
+    return mp.get_datalen();
 }
