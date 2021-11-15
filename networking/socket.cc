@@ -1,5 +1,5 @@
 #include "socket.hh"
-
+#include "../util/debug.hh"
 #include <netdb.h>
 
 int Socket::create_connection(const std::string &host, const std::string &port)
@@ -82,6 +82,8 @@ ssize_t Socket::read_network_data(MessageParser &mp)
     {
         this->read_data(mp);
     }
+
+    INFO("message size: ", mp.get_datalen());
 
     return mp.get_datalen();
 }

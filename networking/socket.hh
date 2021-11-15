@@ -3,7 +3,7 @@
 
 #include "../protocol/message_parser.hh"
 #include "../protocol/message_builder.hh"
-
+#include "../util/debug.hh"
 #include <unistd.h>
 
 class Socket
@@ -19,8 +19,9 @@ class Socket
     virtual ssize_t read_data(MessageParser &mp)
     {
         ssize_t bytes_read = read(this->fd, this->buffer, SOCKET_MAX_BUFFER_SIZE);
+        //INFO("bytes read: ", bytes_read);
 
-        if (bytes_read < 0)
+        if (bytes_read <= 0)
         {
             return -1;
         }
