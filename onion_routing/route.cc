@@ -1,6 +1,6 @@
 #include "route.hh"
 
-int Route::aesctx_init(const BYTE *key, SIZE keylen)
+int Route::aesctxInit(const BYTE *key, SIZE keylen)
 {
     if (key and keylen)
     {

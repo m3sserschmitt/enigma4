@@ -5,7 +5,7 @@
 
 class TLSClient : public Client
 {
-    int setup_socket(const std::string &host, const std::string &port);
+    int setupSocket(const std::string &host, const std::string &port);
 
     TLSClient(const TLSClient &c);
     const TLSClient &operator=(const TLSClient &c);

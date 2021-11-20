@@ -7,7 +7,7 @@
 
 using namespace std;
 
-const string to_lowercase(string str)
+const string toLowercase(string str)
 {
     for (unsigned int i = 0; i < str.size(); i++)
         if (str[i] >= 65 && str[i] <= 90)
@@ -61,7 +61,7 @@ vector<string> split(string str, const string &sep, int max_split)
     return tokens;
 }
 
-BYTES read_file(const string &filename, const CHAR *open_mode)
+BYTES readFile(const string &filename, const CHAR *open_mode)
 {
     FILE *file = fopen(filename.c_str(), open_mode);
 
@@ -90,7 +90,7 @@ BYTES read_file(const string &filename, const CHAR *open_mode)
     return data;
 }
 
-void remove_str(string &from, const string &str)
+void removeFromString(string &from, const string &str)
 {
     size_t f_len = from.size();
     size_t s_len = str.size();
@@ -125,19 +125,19 @@ void remove_str(string &from, const string &str)
     from.resize(f_len);
 }
 
-int KEY_UTIL::PEM_to_byteskey(string pem, BYTES *byteskey)
+int KEY_UTIL::BytesKeyFromPEM(string pem, BYTES *byteskey)
 {
-    remove_str(pem, "-----BEGIN PUBLIC KEY-----");
-    remove_str(pem, "-----END PUBLIC KEY-----");
-    remove_str(pem, "\n");
+    removeFromString(pem, "-----BEGIN PUBLIC KEY-----");
+    removeFromString(pem, "-----END PUBLIC KEY-----");
+    removeFromString(pem, "\n");
 
     return CRYPTO::base64_decode((BASE64)pem.data(), byteskey);
 }
 
-int KEY_UTIL::get_keydigest(const string &pem, BYTES *digest)
+int KEY_UTIL::getKeyDigest(const string &pem, BYTES *digest)
 {
     BYTES byteskey = 0;
-    int result = PEM_to_byteskey(pem, &byteskey);
+    int result = BytesKeyFromPEM(pem, &byteskey);
 
     if (result < 0)
     {
@@ -151,10 +151,10 @@ int KEY_UTIL::get_keydigest(const string &pem, BYTES *digest)
     return result;
 }
 
-int KEY_UTIL::get_key_hexdigest(const string &pem, PLAINTEXT *address)
+int KEY_UTIL::getKeyHexDigest(const string &pem, PLAINTEXT *address)
 {
     BYTES digest = 0;
-    int result = get_keydigest(pem, &digest);
+    int result = getKeyDigest(pem, &digest);
 
     if (result < 0)
     {
@@ -169,10 +169,10 @@ int KEY_UTIL::get_key_hexdigest(const string &pem, PLAINTEXT *address)
     return result;
 }
 
-int KEY_UTIL::get_key_hexdigest(const string &pem, string &address)
+int KEY_UTIL::getKeyHexDigest(const string &pem, string &address)
 {
     PLAINTEXT buffer = 0;
-    int result = get_key_hexdigest(pem, &buffer);
+    int result = getKeyHexDigest(pem, &buffer);
 
     address = buffer;
 

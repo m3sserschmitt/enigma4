@@ -12,37 +12,48 @@ class Message
     SIZE datalen;
 
 protected:
-    BYTES get_message_type_ptr() const
+    
+    BYTES getDataPtr()
+    {
+        return this->data;
+    }
+
+    BYTES getMessageTypePtr() const
     {
         return this->data + MESSAGE_ENC_ALGORITHM_OFFSET;
     }
-    BYTES get_payload_size_ptr() const
+    BYTES getPayloadSizePtr() const
     {
         return this->data + MESSAGE_SIZE_SECTION_OFFSET;
     }
-    BYTES get_payload_ptr() const
+    BYTES getPayloadPtr() const
     {
         return this->data + MESSAGE_PAYLOAD_OFFSET;
     }
 
-    void set_payload_size(SIZE size)
+    void setPayloadSize(SIZE size)
     {
         (this->data + MESSAGE_SIZE_SECTION_OFFSET)[0] = size >> 8;
         (this->data + MESSAGE_SIZE_SECTION_OFFSET)[1] = size;
         this->datalen = size + MESSAGE_HEADER_SIZE;
     }
 
-    void increase_payload_size(SIZE size)
+    void increasePayloadSize(SIZE size)
     {
-        this->set_payload_size(this->get_payload_size() + size);
+        this->setPayloadSize(this->getPayloadSize() + size);
     }
 
-    void decrease_payload_size(SIZE size)
+    void decreasePayloadSize(SIZE size)
     {
-        this->set_payload_size(this->get_payload_size() - size);
+        this->setPayloadSize(this->getPayloadSize() - size);
     }
 
-    void set_message_type(int algorithm)
+    void increaseDatalen(SIZE size)
+    {
+        this->datalen += size;
+    }
+
+    void setMessageType(int algorithm)
     {
         *(this->data + MESSAGE_ENC_ALGORITHM_OFFSET) = algorithm;
     }
@@ -57,18 +68,22 @@ protected:
 
 public:
     Message() : data(new BYTE[MESSAGE_MAX_SIZE]), datalen(MESSAGE_HEADER_SIZE) {}
+    
     Message(const CHAR *data) : data(new BYTE[MESSAGE_MAX_SIZE])
     {
-        this->set_payload(data);
+        this->setPayload(data);
     }
+
     Message(const BYTE *data, SIZE datalen) : data(new BYTE[MESSAGE_MAX_SIZE]), datalen(MESSAGE_HEADER_SIZE)
     {
-        this->set_payload(data, datalen);
+        this->setPayload(data, datalen);
     }
+
     Message(const std::string &data) : data(new BYTE[MESSAGE_MAX_SIZE]), datalen(MESSAGE_HEADER_SIZE)
     {
-        this->set_payload(data);
+        this->setPayload(data);
     }
+    
     Message(const Message &mb) : data(new BYTE[MESSAGE_MAX_SIZE])
     {
         this->update(mb.data, mb.datalen);
@@ -76,54 +91,61 @@ public:
 
     virtual ~Message() = 0;
 
-    int get_message_type() const
+    int getMessageType() const
     {
-        return *this->get_message_type_ptr();
+        return *this->getMessageTypePtr();
     }
 
-    const BYTE *get_payload(SIZE &payloadlen) const
+    const BYTE *getPayload(SIZE &payloadlen) const
     {
-        payloadlen = this->get_payload_size();
-        return this->get_payload_ptr();
+        payloadlen = this->getPayloadSize();
+        return this->getPayloadPtr();
     }
-    const BYTE *get_payload() const
+
+    const BYTE *getPayload() const
     {
-        return this->get_payload_ptr();
+        return this->getPayloadPtr();
     }
-    SIZE get_payload_size() const
+
+    SIZE getPayloadSize() const
     {
         return this->datalen - MESSAGE_HEADER_SIZE;
     }
 
-    void set_payload(const BYTE *data, SIZE datalen)
+    void setPayload(const BYTE *data, SIZE datalen)
     {
-        BYTES payload = this->get_payload_ptr();
-        memset(payload, 0, this->get_payload_size());
+        BYTES payload = this->getPayloadPtr();
+        memset(payload, 0, this->getPayloadSize());
         memcpy(payload, data, datalen);
-        this->set_payload_size(datalen);
-    }
-    void set_payload(const CHAR *data)
-    {
-        this->set_payload((BYTES)data, strlen(data));
-    }
-    void set_payload(const std::string &data)
-    {
-        this->set_payload(data.c_str());
+        this->setPayloadSize(datalen);
     }
 
-    bool is_handshake() const { return this->get_message_type() == MESSAGE_HANDSHAKE; }
-    bool is_exit() const { return this->get_message_type() == MESSAGE_EXIT; }
+    void setPayload(const CHAR *data)
+    {
+        this->setPayload((BYTES)data, strlen(data));
+    }
 
-    const BYTE *get_data(SIZE &datalen) const
+    void setPayload(const std::string &data)
+    {
+        this->setPayload(data.c_str());
+    }
+
+    bool isHandshake() const { return this->getMessageType() == MESSAGE_HANDSHAKE; }
+
+    bool isExit() const { return this->getMessageType() == MESSAGE_EXIT; }
+
+    const BYTE *getData(SIZE &datalen) const
     {
         datalen = this->datalen;
         return this->data;
     }
-    const BYTE *get_data() const
+
+    const BYTE *getData() const
     {
         return this->data;
     };
-    SIZE get_datalen() const
+
+    SIZE getDatalen() const
     {
         return this->datalen;
     };

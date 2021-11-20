@@ -5,7 +5,7 @@ project(enigma4 VERSION 4.0.0)
 add_subdirectory(libcryptography)
 
 
-add_library(util STATIC util/cmd.cc util/system_time.cc util/util.cc)
+add_library(util STATIC util/cmd.cc util/system_time.cc util/util.cc util/error.cc)
 
 
 add_library(essentials STATIC

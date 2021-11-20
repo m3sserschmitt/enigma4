@@ -6,25 +6,25 @@
 
 #include "../libcryptography/include/types.hh"
 
-const std::string to_lowercase(std::string str);
+const std::string toLowercase(std::string str);
 
 const std::string strip(std::string str, const char ch);
 
 std::vector<std::string> split(std::string str, const std::string &sep, int max_split);
 
-BYTES read_file(const std::string &filename, const CHAR *open_mode);
+BYTES readFile(const std::string &filename, const CHAR *open_mode);
 
-void remove_str(std::string &from, const std::string &str);
+void removeFromString(std::string &from, const std::string &str);
 
 namespace KEY_UTIL
 {
-    int PEM_to_byteskey(std::string pem, BYTES *byteskey);
+    int BytesKeyFromPEM(std::string pem, BYTES *byteskey);
 
-    int get_keydigest(const std::string &pem, BYTES *digest);
+    int getKeyDigest(const std::string &pem, BYTES *digest);
 
-    int get_key_hexdigest(const std::string &pem, PLAINTEXT *address);
+    int getKeyHexDigest(const std::string &pem, PLAINTEXT *address);
 
-    int get_key_hexdigest(const std::string &pem, std::string &address);
+    int getKeyHexDigest(const std::string &pem, std::string &address);
 }
 
 #endif

@@ -2,14 +2,14 @@
 
 #include "../networking/tls_socket.hh"
 
-int TLSClient::setup_socket(const std::string &host, const std::string &port)
+int TLSClient::setupSocket(const std::string &host, const std::string &port)
 {
-    if(this->get_socket())
+    if(this->getSocket())
     {
         return -1;
     }
 
-    this->set_socket(new TLSSocket(host, port));
+    this->setSocket(new TLSSocket(host, port));
     
     return 0;
 }

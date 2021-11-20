@@ -11,7 +11,7 @@ class Server
     std::string host;
     std::string port;
 
-    addrinfo *addr_info;
+    addrinfo *addrInfo;
     int backlog;
 
     int servsock;
@@ -24,17 +24,19 @@ class Server
 public:
     Server() : host("localhost"), port("8080"), backlog(128)
     {
-        this->addr_info = Server::make_default_addrinfo();
+        this->addrInfo = Server::makeDefaultAddrinfo();
     }
+
     Server(const std::string &host, const std::string &port) : host(host), port(port), backlog(128)
     {
-        this->addr_info = Server::make_default_addrinfo();
+        this->addrInfo = Server::makeDefaultAddrinfo();
     }
-    Server(const std::string &host, const std::string &port, const addrinfo *addr_info, int backlog) : host(host), port(host), addr_info(new addrinfo(*addr_info)), backlog(backlog) {}
 
-    ~Server() { delete this->addr_info; }
+    Server(const std::string &host, const std::string &port, const addrinfo *addrInfo, int backlog) : host(host), port(host), addrInfo(new addrinfo(*addrInfo)), backlog(backlog) {}
 
-    static addrinfo *make_default_addrinfo()
+    ~Server() { delete this->addrInfo; }
+
+    static addrinfo *makeDefaultAddrinfo()
     {
         addrinfo *new_addrinfo = new addrinfo;
 
@@ -46,45 +48,52 @@ public:
         return new_addrinfo;
     }
 
-    void set_port(const std::string &port)
+    void setPort(const std::string &port)
     {
         this->port = port;
     }
-    void set_addr_info(const addrinfo *addr)
+
+    void setAddrInfo(const addrinfo *addr)
     {
-        delete this->addr_info;
-        this->addr_info = new addrinfo(*addr);
+        delete this->addrInfo;
+        this->addrInfo = new addrinfo(*addr);
     }
-    void set_backlog(int backlog)
+
+    void setBacklog(int backlog)
     {
         this->backlog = backlog;
     }
 
-    const std::string &get_host() const
+    const std::string &getHost() const
     {
         return this->host;
     }
-    const std::string &get_port() const
+
+    const std::string &getPort() const
     {
         return this->port;
     }
-    const addrinfo *get_addr_info() const
+
+    const addrinfo *getAddrInfo() const
     {
-        return this->addr_info;
+        return this->addrInfo;
     }
-    int get_backlog() const
+
+    int getBacklog() const
     {
         return this->backlog;
     }
 
-    void attach_app(App *app)
+    void attachApp(App *app)
     {
         this->app = app;
     }
 
-    int socket_bind();
-    int unix_socket_bind();
-    int accept_clients();
+    int socketBind();
+
+    int unixSocketBind();
+
+    int acceptClients();
 };
 
 #endif

@@ -36,7 +36,7 @@ class OnionRoutingApp : public App
      * @param pubkeyfile Public key of foreign server.
      * @return int 0 for success, -1 for failure.
      */
-    int connect_peer(const std::string &host, const std::string &port, const std::string &pubkeyfile);
+    int connectPeer(const std::string &host, const std::string &port, const std::string &pubkeyfile);
 
     /**
      * @brief Set the up session; All required data is extracted from mp object.
@@ -45,7 +45,7 @@ class OnionRoutingApp : public App
      * @param conn 
      * @return int 
      */
-    static int setup_session(MessageParser &mp, Connection *conn);
+    static int setupSession(MessageParser &mp, Connection *conn);
 
     /**
      * @brief Checks if message is a handshake. If so, then performs required operations in order
@@ -55,7 +55,7 @@ class OnionRoutingApp : public App
      * @param conn Connection to be set.
      * @return int 0 if success, -1 if failure.
      */
-    static int try_handshake(MessageParser &mp, Connection *conn);
+    static int tryHandshake(MessageParser &mp, Connection *conn);
     static int action(MessageParser &mp, Connection *conn);
 
     /**
@@ -64,7 +64,7 @@ class OnionRoutingApp : public App
      * @param mp MessageParser object containing data to be forwarded.
      * @return int int 0 for success, -1 for failure.
      */
-    static int forward_message(MessageParser &mp);
+    static int forwardMessage(MessageParser &mp);
 
     /**
      * @brief Redirects all data received from one client.
@@ -79,7 +79,7 @@ class OnionRoutingApp : public App
      * 
      * @return void* 
      */
-    static void *new_thread(void *);
+    static void *newThread(void *);
 
 public:
     /**
@@ -89,7 +89,7 @@ public:
      * @param privkey_file Path to local private key file in PEM format.
      * @return OnionRoutingApp& reference to newly created object.
      */
-    static OnionRoutingApp &create_app(const std::string &pubkey_file, const std::string &privkey_file);
+    static OnionRoutingApp &createApp(const std::string &pubkey_file, const std::string &privkey_file);
 
     /**
      * @brief Connects to all addresses from netfile. The netfile must contain
@@ -103,7 +103,7 @@ public:
      * @return int -1 if all connections failed, 1 if some of them failed and 
      * 0 if all connections succeedeed.
      */
-    int join_network(const std::string &netfile);
+    int joinNetwork(const std::string &netfile);
 
     /**
      * @brief This method is called by Server when a new client connects.
@@ -113,9 +113,9 @@ public:
      * @param clientsock Socket used to read data from client.
      * @return int -1 if failure, 0 if success.
      */
-    int handle_client(int clientsock);
+    int handleClient(int clientsock);
 
-    const std::string get_address() const { return this->address; }
+    const std::string getAddress() const { return this->address; }
 };
 
 #endif

@@ -2,7 +2,7 @@
 #include "../util/debug.hh"
 #include <netdb.h>
 
-int Socket::create_connection(const std::string &host, const std::string &port)
+int Socket::createConnection(const std::string &host, const std::string &port)
 {
     if (this->fd > 0)
     {
@@ -29,6 +29,7 @@ int Socket::create_connection(const std::string &host, const std::string &port)
     {
         if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
         {
+            close(s);
             continue;
         }
 
@@ -36,8 +37,6 @@ int Socket::create_connection(const std::string &host, const std::string &port)
         {
             break;
         }
-
-        close(s);
     }
 
     if (not p)
@@ -50,40 +49,45 @@ int Socket::create_connection(const std::string &host, const std::string &port)
     return 0;
 }
 
-ssize_t Socket::write_data(const MessageBuilder &mb) const
+ssize_t Socket::writeData(const MessageBuilder &mb) const
 {
-    return write(this->fd, mb.get_data(), mb.get_datalen());
+    INFO("BYTES SENT: ", mb.getDatalen());
+    return write(this->fd, mb.getData(), mb.getDatalen());
 }
 
-ssize_t Socket::write_data(const BYTE *data, SIZE datalen) const
+ssize_t Socket::writeData(const BYTE *data, SIZE datalen) const
 {
     return write(this->fd, data, datalen);
 }
 
-ssize_t Socket::read_local_buffer(MessageParser &mp)
+ssize_t Socket::readLocalBuffer(MessageParser &mp)
 {
     SIZE bytes_read = 0;
 
-    if (this->get_delta() > 0)
+    if (this->getDelta() > 0)
     {
-        bytes_read = mp.update(this->buffer, this->get_delta());
-        this->decrease_delta(bytes_read);
+        bytes_read = mp.update(this->buffer, this->getDelta());
+        this->decreaseDelta(bytes_read);
     }
 
     return bytes_read;
 }
 
-ssize_t Socket::read_network_data(MessageParser &mp)
+ssize_t Socket::readNetworkData(MessageParser &mp)
 {
     // if more data read previously, then read data from local buffer
-    this->read_local_buffer(mp);
+    this->readLocalBuffer(mp);
 
-    while(not mp.is_complete())
+    while(not mp.isComplete())
     {
-        this->read_data(mp);
+        //INFO("Reading data");
+        if(this->readData(mp) < 0)
+        {
+            return -1;
+        }
     }
 
-    INFO("message size: ", mp.get_datalen());
+    // INFO("message size: ", mp.get_datalen());
 
-    return mp.get_datalen();
+    return mp.getPayloadSize();
 }

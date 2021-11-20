@@ -14,9 +14,11 @@ class SessionManager
     std::map<std::string, AES_CRYPTO> keys;
 
     SessionManager(const SessionManager &);
+    
     const SessionManager &operator=(const SessionManager &);
 
 public:
+
     SessionManager()
     {
         this->aesctx = CRYPTO::AES_CRYPTO_new();
@@ -26,6 +28,7 @@ public:
 
         CRYPTO::AES_init(0, 0, 0, 0, this->aesctx);
     }
+
     ~SessionManager()
     {
         std::map<std::string, AES_CRYPTO>::iterator it = keys.begin();
@@ -40,9 +43,11 @@ public:
     }
 
     int setup(RSA_CRYPTO rsactx, MessageParser &mp);
-    AES_CRYPTO get_ctx(const std::string &id) { return this->keys[id]; }
+
+    AES_CRYPTO getEncryptionContext(const std::string &id) { return this->keys[id]; }
 
     void set(const std::string &id, AES_CRYPTO aesctx) { this->keys[id] = aesctx; }
+
     void cleanup(const std::string &id)
     {
         CRYPTO::AES_CRYPTO_free_keys(keys[id]);

@@ -13,7 +13,7 @@ Message &Message::operator=(const Message &mb)
         this->data = 0;
 
         this->data = new BYTE[MESSAGE_MAX_SIZE];
-        this->update(mb.get_data(), mb.get_datalen());
+        this->update(mb.getData(), mb.getDatalen());
     }
 
     return *this;

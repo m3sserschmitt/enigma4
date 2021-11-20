@@ -2,6 +2,9 @@
 #define DEBUG_HH
 
 #include <iostream>
+#include <errno.h>
+#include <string.h>
+
 #include "system_time.hh"
 
 #define DEBUG_ON
@@ -39,7 +42,7 @@ struct stream
             break;
         }
 
-        std::cout << get_system_time() << ": ";
+        std::cout << getSystemTime() << ": ";
 #endif
         return s;
     }
@@ -54,31 +57,34 @@ struct stream
     }
 };
 
-static stream debug_stream;
+static stream debugStream;
 
 template <class T>
-void print_debug_message(T t)
+void printDebugMessage(T t)
 {
 #ifdef DEBUG_ON
-    debug_stream << t << "\n";
+    debugStream << t << "\n";
 #endif
 }
 
 template <typename T, class ... K>
-void print_debug_message(T t, K ... k)
+void printDebugMessage(T t, K ... k)
 {
 #ifdef DEBUG_ON
-    debug_stream << t;
-    print_debug_message(k...);
+    debugStream << t;
+    printDebugMessage(k...);
 #endif
 }
 
-#define SUCCESS(...) print_debug_message(SUCCESS, __VA_ARGS__);
-#define INFO(...) print_debug_message(INFO, __VA_ARGS__);
-#define WARNING(...) print_debug_message(WARNING, __VA_ARGS__);
-#define FAILURE(...) print_debug_message(FAILURE, __VA_ARGS__);
-#define ERROR(...) print_debug_message(ERROR, __VA_ARGS__, "\n");
+#define SUCCESS(...) printDebugMessage(SUCCESS, __VA_ARGS__);
+#define INFO(...) printDebugMessage(INFO, __VA_ARGS__);
+#define WARNING(...) printDebugMessage(WARNING, __VA_ARGS__);
+#define FAILURE(...) printDebugMessage(FAILURE, __VA_ARGS__);
+#define ERROR(...) printDebugMessage(ERROR, __VA_ARGS__, "\n");
 
-#define NEWLINE() print_debug_message("\n");
+#define NEWLINE() printDebugMessage("\n");
+
+
+void printErrorDetails();
 
 #endif

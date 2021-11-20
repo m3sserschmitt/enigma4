@@ -1,6 +1,6 @@
 #include "tls_socket.hh"
 
-int TLSSocket::ssl_init()
+int TLSSocket::sslInit()
 {
     const SSL_METHOD *method = TLS_client_method();
 
@@ -26,9 +26,9 @@ int TLSSocket::ssl_init()
     return 0;
 }
 
-int TLSSocket::ssl_wrap_fd()
+int TLSSocket::sslWrapFd()
 {
-    if (not SSL_set_fd(ssl, this->get_fd()))
+    if (not SSL_set_fd(ssl, this->getFd()))
     {
         return -1;
     }
@@ -41,20 +41,20 @@ int TLSSocket::ssl_wrap_fd()
     return 0;
 }
 
-ssize_t TLSSocket::read_data()
+ssize_t TLSSocket::readData()
 {
-    SIZE delta = this->get_delta();
-    BYTES buffer = this->get_buffer();
+    SIZE delta = this->getDelta();
+    BYTES buffer = this->getBuffer();
 
-    return SSL_read(this->ssl, buffer + (delta > 0 ? delta : 0), Socket::get_max_socket_buff_read());
+    return SSL_read(this->ssl, buffer + (delta > 0 ? delta : 0), Socket::getMaxSocketBuffRead());
 }
 
-ssize_t TLSSocket::write_data(const MessageBuilder &mb) const
+ssize_t TLSSocket::writeData(const MessageBuilder &mb) const
 {
-    return SSL_write(this->ssl, mb.get_data(), mb.get_datalen());
+    return SSL_write(this->ssl, mb.getData(), mb.getDatalen());
 }
 
-ssize_t TLSSocket::write_data(const BYTE *data, SIZE datalen) const
+ssize_t TLSSocket::writeData(const BYTE *data, SIZE datalen) const
 {
     return SSL_write(this->ssl, data, datalen);
 }

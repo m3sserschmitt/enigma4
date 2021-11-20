@@ -4,19 +4,19 @@
 #include <sys/un.h>
 
 
-int Server::socket_bind()
+int Server::socketBind()
 {
     int reuse_address = 1;
 
     addrinfo *res = new addrinfo;
     addrinfo *p;
 
-    if (not this->host.size() or not this->port.size() or not this->addr_info)
+    if (not this->host.size() or not this->port.size() or not this->addrInfo)
     {
         return -1;
     }
 
-    if (getaddrinfo(host.c_str(), port.c_str(), this->addr_info, &res) != 0)
+    if (getaddrinfo(host.c_str(), port.c_str(), this->addrInfo, &res) != 0)
     {
         return -1;
     }
@@ -25,11 +25,15 @@ int Server::socket_bind()
     {
         if ((this->servsock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
         {
+            close(this->servsock);
+            
             continue;
         }
 
         if ((setsockopt(this->servsock, SOL_SOCKET, SO_REUSEADDR, &reuse_address, sizeof(reuse_address))) < 0)
         {
+            close(this->servsock);
+
             continue;
         }
 
@@ -37,8 +41,6 @@ int Server::socket_bind()
         {
             break;
         }
-
-        close(this->servsock);
     }
 
     if (not p)
@@ -51,7 +53,7 @@ int Server::socket_bind()
     return 0;
 }
 
-int Server::unix_socket_bind()
+int Server::unixSocketBind()
 {
     sockaddr_un addr;
 
@@ -79,7 +81,7 @@ int Server::unix_socket_bind()
     return bind(this->servsock, (sockaddr *)&addr, sizeof(sockaddr_un));
 }
 
-int Server::accept_clients()
+int Server::acceptClients()
 {
     listen(this->servsock, this->backlog);
 
@@ -96,7 +98,7 @@ int Server::accept_clients()
             break;
         }
 
-        this->app->handle_client(clientsock);
+        this->app->handleClient(clientsock);
     }
 
     return clientsock;

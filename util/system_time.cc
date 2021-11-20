@@ -10,7 +10,7 @@
 
 static char buffer[sizeof "9999-12-31 23:59:59.99999"];
 
-const char *get_system_time()
+const char *getSystemTime()
 {
     // auto time_now = std::chrono::system_clock::now();
     // std::time_t current_time = std::chrono::system_clock::to_time_t(time_now);

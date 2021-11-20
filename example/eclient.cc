@@ -18,7 +18,7 @@ void gen_keys()
 int main(int argc, char **argv)
 {
 
-    const char *client_pubkey = get_cmd_option(argv, argc, "-pubkey");
+    const char *client_pubkey = getCmdOption(argv, argc, "-pubkey");
 
     if (not client_pubkey)
     {
@@ -26,7 +26,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    const char *client_privkey = get_cmd_option(argv, argc, "-privkey");
+    const char *client_privkey = getCmdOption(argv, argc, "-privkey");
 
     if (not client_privkey)
     {
@@ -34,7 +34,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    const char *circuit_file = get_cmd_option(argv, argc, "-circuit");
+    const char *circuit_file = getCmdOption(argv, argc, "-circuit");
 
     if (not circuit_file)
     {
@@ -43,9 +43,9 @@ int main(int argc, char **argv)
     }
 
     Client client(client_pubkey, client_privkey);
-    cout << "[+] Client address: " << client.get_client_hexaddress() << "\n";
+    cout << "[+] Client address: " << client.getClientHexaddress() << "\n";
 
-    string circuit_file_content = (const char *)read_file(circuit_file, "r");
+    string circuit_file_content = (const char *)readFile(circuit_file, "r");
     vector<string> entries = split(circuit_file_content, "\n", -1);
     vector<string> tokens = split(entries[0], " ", -1);
 
@@ -55,9 +55,9 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    cout << "[+] Connection status: " << client.create_connection(tokens[0], tokens[1], tokens[2]) << "\n";
+    cout << "[+] Connection status: " << client.createConnection(tokens[0], tokens[1], tokens[2]) << "\n";
 
-    string last_address = client.get_server_address();
+    string last_address = client.getServerAddress();
     cout << "[+] Server address: " << last_address << "\n";
 
     SIZE circuit_length = entries.size();
@@ -71,11 +71,11 @@ int main(int argc, char **argv)
 
         if (k == circuit_length - 1)
         {
-            last_address = client.add_node(entries[k], last_address, 1, 1);
+            last_address = client.addNode(entries[k], last_address, 1, 1);
         }
         else
         {
-            last_address = client.add_node(entries[k], last_address);
+            last_address = client.addNode(entries[k], last_address);
         }
     }
 
@@ -91,10 +91,10 @@ int main(int argc, char **argv)
             break;
         }
 
-        client.write_data((BYTES)input.c_str(), input.size(), last_address);
+        client.writeData((BYTES)input.c_str(), input.size(), last_address);
     }
 
-    client.exit_circuit(last_address);
+    client.exitCircuit(last_address);
 
     return 0;
 }

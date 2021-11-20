@@ -14,10 +14,10 @@ class MessageParser : public Message
 {
     std::map<std::string, std::string> parseddata;
 
-    void remove_payload_beg(SIZE len)
+    void removePayloadBeg(SIZE len)
     {
-        BYTES payload = this->get_payload_ptr();
-        SIZE payload_size = this->get_payload_size();
+        BYTES payload = this->getPayloadPtr();
+        SIZE payload_size = this->getPayloadSize();
 
         memcpy(payload, payload + len, payload_size);
         payload_size -= len;
@@ -28,9 +28,9 @@ class MessageParser : public Message
 
     void parse(const CHAR *data);
 
-    int handshake_decrypt_session_key(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
-    int handshake_decrypt_pubkey(AES_CRYPTO aesctx, RSA_CRYPTO rsactx);
-    int message_verify_signature(RSA_CRYPTO rsactx);
+    int handshakeDecryptSessionKey(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
+    int handshakeDecryptPubkey(AES_CRYPTO aesctx, RSA_CRYPTO rsactx);
+    int messageVerifySignature(RSA_CRYPTO rsactx);
 
 public:
     MessageParser() : Message(){};
@@ -40,7 +40,7 @@ public:
     MessageParser(const MessageParser &mp) : Message(mp), parseddata(mp.parseddata){};
     ~MessageParser(){};
 
-    static SIZE read_payload_size(const BYTE *data)
+    static SIZE readPayloadSize(const BYTE *data)
     {
         const BYTE *payload_size_ptr = data + MESSAGE_SIZE_SECTION_OFFSET;
         SIZE payload_size = *payload_size_ptr;
@@ -51,81 +51,83 @@ public:
         return payload_size;
     }
 
-    static SIZE compute_total_message_size(const BYTE *data)
+    static SIZE computeTotalMessageSize(const BYTE *data)
     {
-        return MessageParser::read_payload_size(data) + MESSAGE_HEADER_SIZE;
+        return MessageParser::readPayloadSize(data) + MESSAGE_HEADER_SIZE;
     }
 
     SIZE update(const BYTE *data, SIZE datalen)
     {
-        datalen = std::min(datalen, this->read_payload_size(data) + MESSAGE_HEADER_SIZE);
+        datalen = std::min(datalen, this->readPayloadSize(data) + MESSAGE_HEADER_SIZE);
         Message::update(data, datalen);
         return datalen;
     }
 
-    SIZE get_required_size() const
+    SIZE getRequiredSize() const
     {
-        return this->get_payload_size() - this->get_actual_payload_size();
+        return this->getPayloadSize() - this->getActualPayloadSize();
     }
 
-    SIZE append_payload(const BYTE *data, SIZE datalen)
+    SIZE appendPayload(const BYTE *data, SIZE datalen)
     {
-        SIZE payload_size = this->get_payload_size();
-
-        // if(payload_size)
-        // {
-            datalen = std::min(this->get_required_size(), datalen);
-        // }
+        datalen = std::min(this->getRequiredSize(), datalen);
         
-
-        memcpy(this->get_payload_ptr() + payload_size, data, datalen);
-        this->set_payload_size(payload_size + datalen);
+        memcpy(this->getDataPtr() + this->getDatalen(), data, datalen);
+        
+        this->increaseDatalen(datalen);
 
         return datalen;
     }
-    SIZE get_payload_size() const
+
+    SIZE getPayloadSize() const
     {
-        BYTES payload_size_ptr = this->get_payload_size_ptr();
+        BYTES payload_size_ptr = this->getPayloadSizePtr();
         SIZE payload_size = *payload_size_ptr;
         payload_size <<= 8;
         payload_size |= *(payload_size_ptr + 1);
 
         return payload_size;
     }
-    SIZE get_actual_payload_size() const
+    
+    SIZE getActualPayloadSize() const
     {
-        return Message::get_payload_size();
+        return Message::getPayloadSize();
     }
 
-    const std::string &get_parsed_id() { return this->parseddata["id"]; }
-    const std::string &get_parsed_address() { return this->parseddata["address"]; }
-    const std::string &get_parsed_next_address() { return this->parseddata["next"]; }
-    const std::string &get_parsed_pubkey() { return this->parseddata["pubkey"]; }
+    const std::string &getParsedId() { return this->parseddata["id"]; }
+    const std::string &getParsedAddress() { return this->parseddata["address"]; }
+    const std::string &getParsedNextAddress() { return this->parseddata["next"]; }
+    const std::string &getParsedPubkey() { return this->parseddata["pubkey"]; }
 
-    bool parsed_id_exists() const { return this->key_exists("id"); }
-    bool parsed_address_exists() const { return this->key_exists("address"); }
-    bool parsed_next_address_exists() const { return this->key_exists("next"); }
-    bool parsed_pubkey_exists() const { return this->key_exists("pubkey"); }
+    bool parsedIdExists() const { return this->keyExists("id"); }
+    bool parsedAddressExists() const { return this->keyExists("address"); }
+    bool parsedNextAddressExists() const { return this->keyExists("next"); }
+    bool parsedPubkeyExists() const { return this->keyExists("pubkey"); }
 
-    bool is_complete() const
+    bool isComplete() const
     {
-        return this->get_payload_size() and not this->get_required_size();
+        return this->getPayloadSize() and not this->getRequiredSize();
     }
 
     int decrypt(Route *route);
+
     int decrypt(Connection *conn);
 
     int handshake(RSA_CRYPTO rsactx, Route *route);
+
     int handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
 
-    void remove_next();
-    void remove_id();
+    void removeNext();
 
-    void parse() { this->parse((const CHAR *)this->get_payload_ptr()); }
-    bool key_exists(const std::string &key) const
+    void removeId();
+
+    void parse() { this->parse((const CHAR *)this->getPayloadPtr()); }
+
+    bool keyExists(const std::string &key) const
     {
         return this->parseddata.find(key) != this->parseddata.end();
     };
+    
     void clear()
     {
         this->parseddata.clear();

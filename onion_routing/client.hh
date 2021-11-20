@@ -19,7 +19,7 @@ class Client
         Socket *sock;
         RSA_CRYPTO rsactx;
         AES_CRYPTO aesctx;
-        std::string client_address;
+        std::string clientAddress;
         std::map<std::string, Route *> *routes;
     };
 
@@ -33,24 +33,28 @@ class Client
 
     RSA_CRYPTO rsactx;
 
-    virtual int setup_socket(const std::string &host, const std::string &port);
+    virtual int setupSocket(const std::string &host, const std::string &port);
 
-    const std::string setup_dest(const std::string &keyfile, Route **route, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
+    const std::string setupDest(const std::string &keyfile, Route **route, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
 
     int handshake(Route *route, bool add_pubkey = true, bool add_all_keys = false);
 
-    static int exit_signal(MessageParser &mp, std::map<std::string, Route *> *routes);
-    static int setup_session_from_handshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx);
+    static int exitSignal(MessageParser &mp, std::map<std::string, Route *> *routes);
+    
+    static int setupSessionFromHandshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx);
+    
     static int action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, std::map<std::string, Route *> *routes);
 
-    static int decrypt_incoming_message(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes);
-    static void *data_listener(void *node);
+    static int decryptIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes);
+    
+    static void *dataListener(void *node);
 
-    int write_dest(MessageBuilder &mb, Route *route);
+    int writeDest(MessageBuilder &mb, Route *route);
 
-    void cleanup_circuit(Route *route);
+    void cleanupCircuit(Route *route);
 
     Client(const Client &c);
+    
     const Client &operator=(const Client &c);
 
 public:
@@ -62,14 +66,14 @@ public:
      * 
      * @return const std::string& Client local address.
      */
-    const std::string &get_client_hexaddress() const { return this->hexaddress; }
+    const std::string &getClientHexaddress() const { return this->hexaddress; }
 
     /**
      * @brief Get the server address.
      * 
      * @return const std::string Server address.
      */
-    const std::string get_server_address() const { return this->serv->get_pubkey_hexdigest(); }
+    const std::string getServerAddress() const { return this->serv->getPubkeyHexDigest(); }
 
     /**
      * @brief Create a connection to specified server.
@@ -81,7 +85,7 @@ public:
      * server.
      * @return int 0 if success, -1 if failure.
      */
-    int create_connection(const std::string &host, const std::string &port, const std::string &keyfile, bool start_listener = true);
+    int createConnection(const std::string &host, const std::string &port, const std::string &keyfile, bool start_listener = true);
 
     /**
      * @brief Add a new node to a circuit.
@@ -94,7 +98,7 @@ public:
      * is added into a circuit).
      * @return const std::string Address of newly added node. 
      */
-    const std::string add_node(const std::string &keyfile, const std::string &last_address, bool identify = false, bool add_keys = false, bool make_new_session = false);
+    const std::string addNode(const std::string &keyfile, const std::string &last_address, bool identify = false, bool add_keys = false, bool make_new_session = false);
 
     /**
      * @brief Write data to specified address.
@@ -104,7 +108,7 @@ public:
      * @param address Destination address.
      * @return int 0 if success, -1 if failure.
      */
-    int write_data(const BYTE *data, SIZE datalen, const std::string &address);
+    int writeData(const BYTE *data, SIZE datalen, const std::string &address);
 
     /**
      * @brief Send EXIT message over circuit
@@ -112,17 +116,17 @@ public:
      * @param address Destination address (typically last address in circuit).
      * @return int 0 if success, -1 if failure.
      */
-    int exit_circuit(const std::string &address);
+    int exitCircuit(const std::string &address);
 
-    Socket *get_socket() { return this->sock; }
-    void set_socket(Socket *s) { this->sock = s; }
+    Socket *getSocket() { return this->sock; }
+    void setSocket(Socket *s) { this->sock = s; }
 
-    Connection *make_connection() const
+    Connection *createConnectionStructure() const
     {
-        Socket *new_socket = sock->make_socket_copy();
-        Connection *new_connection = new Connection(new_socket);
+        Socket *new_socket = sock->makeSocketCopy();
 
-        new_connection->set_address(this->get_server_address());
+        Connection *new_connection = new Connection(new_socket);
+        new_connection->setAddress(this->getServerAddress());
 
         return new_connection;
     }

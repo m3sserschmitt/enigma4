@@ -6,6 +6,8 @@
 
 #include "../util/debug.hh"
 
+#include <thread>
+
 using namespace std;
 
 RSA_CRYPTO OnionRoutingApp::rsactx;
@@ -22,7 +24,7 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
 {
     this->rsactx = CRYPTO::RSA_CRYPTO_new();
 
-    PLAINTEXT key = (PLAINTEXT)read_file(pubkey_file, "rb");
+    PLAINTEXT key = (PLAINTEXT)readFile(pubkey_file, "rb");
 
     this->pubkey = key;
     this->pubkeyfile = pubkey_file;
@@ -31,36 +33,36 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
     SUCCESS("App: private key initialization: ", CRYPTO::RSA_init_key_file(privkey_file, 0, 0, PRIVATE_KEY, this->rsactx));
     SUCCESS("App: RSA decryption initialization: ", CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT));
 
-    KEY_UTIL::get_key_hexdigest(key, this->address);
+    KEY_UTIL::getKeyHexDigest(key, this->address);
 }
 
-int OnionRoutingApp::connect_peer(const string &host, const string &port, const string &pubkeyfile)
+int OnionRoutingApp::connectPeer(const string &host, const string &port, const string &pubkeyfile)
 {
     Client *client = new Client(OnionRoutingApp::pubkeyfile, OnionRoutingApp::privkeyfile);
 
-    if (client->create_connection(host, port, pubkeyfile, 0) < 0)
+    if (client->createConnection(host, port, pubkeyfile, 0) < 0)
     {
         FAILURE("Connection to ", host, ":", port, " failed.");
         return -1;
     }
 
-    SUCCESS("Connection to ", host, ":", port, " (address: ", client->get_server_address(), ") succeeded.");
+    SUCCESS("Connection to ", host, ":", port, " (address: ", client->getServerAddress(), ") succeeded.");
 
-    Connection *new_connection = client->make_connection();
+    Connection *new_connection = client->createConnectionStructure();
 
-    clients[client->get_server_address()] = new_connection;
+    clients[client->getServerAddress()] = new_connection;
 
     pthread_t thread;
-    pthread_create(&thread, 0, this->new_thread, (void *)new_connection) ? 0 : -1;
+    pthread_create(&thread, 0, this->newThread, (void *)new_connection) ? 0 : -1;
 
     delete client;
 
     return 0;
 }
 
-int OnionRoutingApp::join_network(const string &netfile)
+int OnionRoutingApp::joinNetwork(const string &netfile)
 {
-    string netfile_content = (const CHAR *)read_file(netfile, "r");
+    string netfile_content = (const CHAR *)readFile(netfile, "r");
 
     vector<string> lines = split(netfile_content, "\n", -1);
 
@@ -85,7 +87,7 @@ int OnionRoutingApp::join_network(const string &netfile)
             continue;
         }
 
-        if (connect_peer(tokens[0], tokens[1], tokens[2]) == 0)
+        if (connectPeer(tokens[0], tokens[1], tokens[2]) == 0)
         {
             connections++;
         }
@@ -113,16 +115,16 @@ int OnionRoutingApp::join_network(const string &netfile)
     return ret;
 }
 
-OnionRoutingApp &OnionRoutingApp::create_app(const string &pubkey_file, const string &privkey_file)
+OnionRoutingApp &OnionRoutingApp::createApp(const string &pubkey_file, const string &privkey_file)
 {
     static OnionRoutingApp app(pubkey_file, privkey_file);
 
     return app;
 }
 
-int OnionRoutingApp::try_handshake(MessageParser &mp, Connection *conn)
+int OnionRoutingApp::tryHandshake(MessageParser &mp, Connection *conn)
 {
-    if (not mp.is_handshake())
+    if (not mp.isHandshake())
     {
         return -1;
     }
@@ -132,27 +134,27 @@ int OnionRoutingApp::try_handshake(MessageParser &mp, Connection *conn)
     // NEWLINE();
     // INFO("Handshake received; Session ID: ", mp.get_parsed_id());
 
-    if (conn->add_session(mp, OnionRoutingApp::rsactx) < 0)
+    if (conn->addSession(mp, OnionRoutingApp::rsactx) < 0)
     {
-        FAILURE("Handshake failed for session ID: ", mp.get_parsed_id());
+        FAILURE("Handshake failed for session ID: ", mp.getParsedId());
         return -1;
     }
 
-    SUCCESS("Handshake completed: ", conn->get_address(), " for session ID: ", mp.get_parsed_id());
+    SUCCESS("Handshake completed: ", conn->getAddress(), " for session ID: ", mp.getParsedId());
 
-    OnionRoutingApp::clients.insert(pair<string, Connection *>(mp.get_parsed_address(), conn));
+    OnionRoutingApp::clients.insert(pair<string, Connection *>(mp.getParsedAddress(), conn));
 
     return 0;
 }
 
-int OnionRoutingApp::forward_message(MessageParser &mp)
+int OnionRoutingApp::forwardMessage(MessageParser &mp)
 {
-    mp.remove_next();
-    string next_address = mp.get_parsed_next_address();
+    mp.removeNext();
+    string next_address = mp.getParsedNextAddress();
 
     map<string, Connection *>::iterator next = clients.find(next_address);
 
-    INFO("Next address: ", next_address, "; session ID: ", mp.get_parsed_id());
+    INFO("Next address: ", next_address, "; session ID: ", mp.getParsedId());
 
     if (next == clients.end())
     {
@@ -162,12 +164,12 @@ int OnionRoutingApp::forward_message(MessageParser &mp)
 
     INFO("Forwarding to ", next->first);
 
-    return next->second->write_data(mp.get_data(), mp.get_datalen()) > 0 ? 0 : -1;
+    return next->second->writeData(mp.getData(), mp.getDatalen()) > 0 ? 0 : -1;
 }
 
 int OnionRoutingApp::action(MessageParser &mp, Connection *conn)
 {
-    if (try_handshake(mp, conn) == 0)
+    if (tryHandshake(mp, conn) == 0)
     {
         return 0;
     }
@@ -177,17 +179,17 @@ int OnionRoutingApp::action(MessageParser &mp, Connection *conn)
         return -1;
     }
 
-    string session_id = mp.get_parsed_id();
+    string session_id = mp.getParsedId();
     INFO("Message decrypted successfully; Session ID: ", session_id);
 
-    if (mp.is_exit())
+    if (mp.isExit())
     {
         INFO("EXIT received for session ID: ", session_id);
-        conn->sessions->cleanup(session_id);
+        conn->cleanupSession(session_id);
         SUCCESS("Session with ID ", session_id, " erased.");
     }
 
-    if (forward_message(mp) < 0)
+    if (forwardMessage(mp) < 0)
     {
         return -1;
     }
@@ -199,10 +201,10 @@ int OnionRoutingApp::redirect(Connection *const conn)
 {
     MessageParser mp;
 
-    while (conn->read_data(mp) > 0)
+    while (conn->readData(mp) > 0)
     {
         NEWLINE();
-        INFO("Data received: ", mp.get_datalen(), " bytes");
+        INFO("Data received: ", mp.getDatalen(), " bytes");
 
         action(mp, conn);
 
@@ -212,7 +214,7 @@ int OnionRoutingApp::redirect(Connection *const conn)
     return 0;
 }
 
-void *OnionRoutingApp::new_thread(void *args)
+void *OnionRoutingApp::newThread(void *args)
 {
     Connection *conn = ((Connection *)args);
 
@@ -221,20 +223,21 @@ void *OnionRoutingApp::new_thread(void *args)
         return 0;
     }
 
+    // this_thread::sleep_for(2000ms);
     redirect(conn);
 
-    clients.erase(conn->get_address());
-    INFO("Connection to ", conn->get_address(), " closed.");
+    clients.erase(conn->getAddress());
+    INFO("Connection to ", conn->getAddress(), " closed.");
 
     delete conn;
 
     return 0;
 }
 
-int OnionRoutingApp::handle_client(int clientsock)
+int OnionRoutingApp::handleClient(int clientsock)
 {
     pthread_t thread;
     Connection *connection = new Connection(new Socket(clientsock));
 
-    return pthread_create(&thread, 0, this->new_thread, (void *)connection) ? 0 : -1;
+    return pthread_create(&thread, 0, this->newThread, (void *)connection) ? 0 : -1;
 }

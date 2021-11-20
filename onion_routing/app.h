@@ -7,7 +7,7 @@ class App
 {
 public:
     virtual ~App(){};
-    virtual int handle_client(int) = 0;
+    virtual int handleClient(int) = 0;
 };
 
 #endif

@@ -11,7 +11,7 @@ int MessageBuilder::encrypt(AES_CRYPTO ctx)
     }
 
     BYTES out = 0;
-    int result = CRYPTO::AES_encrypt(ctx, this->get_data(), this->get_datalen(), &out);
+    int result = CRYPTO::AES_encrypt(ctx, this->getData(), this->getDatalen(), &out);
 
     if (result < 0)
     {
@@ -19,10 +19,10 @@ int MessageBuilder::encrypt(AES_CRYPTO ctx)
         return -1;
     }
 
-    this->set_payload(out, result);
-    if (not this->is_exit())
+    this->setPayload(out, result);
+    if (not this->isExit())
     {
-        this->set_message_type(MESSAGE_ENC_AES);
+        this->setMessageType(MESSAGE_ENC_AES);
     }
 
     delete[] out;
@@ -31,10 +31,10 @@ int MessageBuilder::encrypt(AES_CRYPTO ctx)
 
 int MessageBuilder::encrypt(Route *route)
 {
-    return this->encrypt(route->get_aesctx());
+    return this->encrypt(route->getAesctx());
 }
 
-int MessageBuilder::handshake_setup_session_key(Route *route, bool add_all_keys)
+int MessageBuilder::handshakeSetupSessionKey(Route *route, bool add_all_keys)
 {
     BYTES keys = new BYTE[32 * 10];
     BYTES encrkeys = 0;
@@ -46,9 +46,9 @@ int MessageBuilder::handshake_setup_session_key(Route *route, bool add_all_keys)
 
     if (add_all_keys)
     {    
-        for (Route *p = route; p; p = p->get_previous(), keys_ptr += 32)
+        for (Route *p = route; p; p = p->getPrevious(), keys_ptr += 32)
         {
-            if (CRYPTO::AES_read_key(route->get_aesctx(), 32, &keys_ptr) < 0)
+            if (CRYPTO::AES_read_key(route->getAesctx(), 32, &keys_ptr) < 0)
             {
                 ret = -1;
                 goto endfunc;
@@ -57,21 +57,21 @@ int MessageBuilder::handshake_setup_session_key(Route *route, bool add_all_keys)
     }
     else
     {
-        if (CRYPTO::AES_read_key(route->get_aesctx(), 32, &keys_ptr) < 0)
+        if (CRYPTO::AES_read_key(route->getAesctx(), 32, &keys_ptr) < 0)
         {
             ret = -1;
             goto endfunc;
         }
     }
 
-    if ((encrlen = CRYPTO::RSA_encrypt(route->get_rsactx(), keys, (int)(keys_ptr - keys) + 32, &encrkeys)) < 0)
+    if ((encrlen = CRYPTO::RSA_encrypt(route->getRsactx(), keys, (int)(keys_ptr - keys) + 32, &encrkeys)) < 0)
     {
         ret = -1;
         goto endfunc;
     }
 
-    this->append_payload_end(route->get_id(), 16);
-    this->append_payload_end(encrkeys, encrlen);
+    this->appendPayloadEnd(route->getId(), 16);
+    this->appendPayloadEnd(encrkeys, encrlen);
 
 endfunc:
     delete[] keys;
@@ -80,7 +80,7 @@ endfunc:
     return ret;
 }
 
-int MessageBuilder::handshake_setup_pubkey(AES_CRYPTO ctx, const string &pubkeypem)
+int MessageBuilder::handshakeSetupPubkey(AES_CRYPTO ctx, const string &pubkeypem)
 {
     BYTES encrdata = 0;
     int encrlen;
@@ -93,27 +93,27 @@ int MessageBuilder::handshake_setup_pubkey(AES_CRYPTO ctx, const string &pubkeyp
         return -1;
     }
 
-    this->append_payload_end(encrdata, encrlen);
+    this->appendPayloadEnd(encrdata, encrlen);
 
     return 0;
 }
 
-int MessageBuilder::sign_message(RSA_CRYPTO ctx)
+int MessageBuilder::signMessage(RSA_CRYPTO ctx)
 {
     BYTES signature = 0;
     int signlen;
 
-    SIZE current_datalen = this->get_datalen();
-    this->increase_payload_size(MESSAGE_ENC_PUBKEY_SIZE);
+    SIZE current_datalen = this->getDatalen();
+    this->increasePayloadSize(MESSAGE_ENC_PUBKEY_SIZE);
 
-    if ((signlen = CRYPTO::RSA_sign(ctx, this->get_data(), current_datalen, &signature)) < 0)
+    if ((signlen = CRYPTO::RSA_sign(ctx, this->getData(), current_datalen, &signature)) < 0)
     {
         delete[] signature;
         return -1;
     }
 
-    this->decrease_payload_size(MESSAGE_ENC_PUBKEY_SIZE);
-    this->append_payload_end(signature, signlen);
+    this->decreasePayloadSize(MESSAGE_ENC_PUBKEY_SIZE);
+    this->appendPayloadEnd(signature, signlen);
 
     delete[] signature;
     return 0;
@@ -121,27 +121,27 @@ int MessageBuilder::sign_message(RSA_CRYPTO ctx)
 
 int MessageBuilder::handshake(Route *route, RSA_CRYPTO signrsactx, const string &pubkeypem, bool add_all_keys)
 {
-    if (this->handshake_setup_session_key(route, add_all_keys) < 0)
+    if (this->handshakeSetupSessionKey(route, add_all_keys) < 0)
     {
         return -1;
     }
 
     if (pubkeypem.size())
     {
-        if (this->handshake_setup_pubkey(route->get_aesctx(), pubkeypem) < 0)
+        if (this->handshakeSetupPubkey(route->getAesctx(), pubkeypem) < 0)
         {
             return -1;
         }
 
-        this->set_message_type(MESSAGE_HANDSHAKE);
+        this->setMessageType(MESSAGE_HANDSHAKE);
 
-        if (this->sign_message(signrsactx) < 0)
+        if (this->signMessage(signrsactx) < 0)
         {
             return -1;
         }
     }
 
-    this->set_message_type(MESSAGE_HANDSHAKE);
+    this->setMessageType(MESSAGE_HANDSHAKE);
 
     return 0;
 }

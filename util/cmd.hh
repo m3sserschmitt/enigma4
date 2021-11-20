@@ -1,4 +1,4 @@
 #include <string>
 
-char *get_cmd_option(char **argv, int argc, const std::string &option);
-bool cmd_option_exists(char **argv, int argc, const std::string &option);
+char *getCmdOption(char **argv, int argc, const std::string &option);
+bool cmdOptionExists(char **argv, int argc, const std::string &option);

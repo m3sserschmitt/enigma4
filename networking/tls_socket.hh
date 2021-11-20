@@ -10,52 +10,58 @@ class TLSSocket : public Socket
     SSL_CTX *ctx;
     SSL *ssl;
 
-    int ssl_init();
-    int ssl_wrap_fd();
+    int sslInit();
 
-    ssize_t read_data();
+    int sslWrapFd();
+
+    ssize_t readData();
 
     TLSSocket(const TLSSocket &s);
+
     const TLSSocket &operator=(const TLSSocket &);
 
 public:
-    TLSSocket() : Socket() { this->ssl_init(); };
+    TLSSocket() : Socket() { this->sslInit(); };
+
     TLSSocket(int fd) : Socket(fd)
     {
-        this->ssl_init();
-        this->ssl_wrap_fd();
+        this->sslInit();
+        this->sslWrapFd();
     }
+    
     TLSSocket(const std::string host, const std::string &port) : Socket(host, port)
     {
-        this->ssl_init();
-        this->ssl_wrap_fd();
+        this->sslInit();
+        this->sslWrapFd();
     }
+
     ~TLSSocket()
     {
         SSL_CTX_free(ctx);
         SSL_free(ssl);
     }
 
-    int create_connection(const std::string &host, const std::string &port)
+    int createConnection(const std::string &host, const std::string &port)
     {
-        if (Socket::create_connection(host, port) < 0)
+        if (Socket::createConnection(host, port) < 0)
         {
             return -1;
         }
 
-        return this->ssl_wrap_fd();
+        return this->sslWrapFd();
     }
     
     void wrap(int fd)
     {
         Socket::wrap(fd);
-        this->ssl_wrap_fd();
+        this->sslWrapFd();
     };
 
-    ssize_t write_data(const MessageBuilder &mb) const;
-    ssize_t write_data(const BYTE *data, SIZE datalen) const;
+    ssize_t writeData(const MessageBuilder &mb) const;
+    
+    ssize_t writeData(const BYTE *data, SIZE datalen) const;
 
-    const CHAR *get_cipher() const { return SSL_get_cipher(ssl); };
+    const CHAR *getCipher() const { return SSL_get_cipher(ssl); };
 };
 
 #endif

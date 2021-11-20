@@ -11,7 +11,7 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-    const char *pubkey = get_cmd_option(argv, argc, "-pubkey");
+    const char *pubkey = getCmdOption(argv, argc, "-pubkey");
 
     if (not pubkey)
     {
@@ -19,7 +19,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    const char *privkey = get_cmd_option(argv, argc, "-privkey");
+    const char *privkey = getCmdOption(argv, argc, "-privkey");
 
     if (not privkey)
     {
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    const char *host = get_cmd_option(argv, argc, "-host");
+    const char *host = getCmdOption(argv, argc, "-host");
 
     if (not host)
     {
@@ -35,7 +35,7 @@ int main(int argc, char **argv)
         host = "localhost";
     }
 
-    const char *port = get_cmd_option(argv, argc, "-port");
+    const char *port = getCmdOption(argv, argc, "-port");
 
     if (not port)
     {
@@ -45,30 +45,30 @@ int main(int argc, char **argv)
 
     Server *server = new Server(host, port);
 
-    OnionRoutingApp &app = OnionRoutingApp::create_app(pubkey, privkey);
-    const char *netfile = get_cmd_option(argv, argc, "-netfile");
+    OnionRoutingApp &app = OnionRoutingApp::createApp(pubkey, privkey);
+    const char *netfile = getCmdOption(argv, argc, "-netfile");
 
     if (netfile)
     {
-        app.join_network(netfile);
+        app.joinNetwork(netfile);
     }
     else
     {
         FAILURE("No netfile provided; network connection failed.");
     }
 
-    server->attach_app(&app);
+    server->attachApp(&app);
 
-    if (server->socket_bind() < 0)
+    if (server->socketBind() < 0)
     {
         ERROR("Binding error.");
         return EXIT_FAILURE;
     }
 
-    INFO("Local address: ", app.get_address());
+    INFO("Local address: ", app.getAddress());
     INFO("Listening on ", host, ":", port);
 
-    server->accept_clients();
+    server->acceptClients();
 
     return EXIT_SUCCESS;
 }
