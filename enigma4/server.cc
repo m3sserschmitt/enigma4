@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 #include <sys/un.h>
+#include "../util/debug.hh"
 
 
 int Server::socketBind()
@@ -86,12 +87,13 @@ int Server::acceptClients()
     listen(this->servsock, this->backlog);
 
     int clientsock;
-    sockaddr peer_addr;
-    socklen_t peer_addrlen;
+    //sockaddr peer_addr;
+    //socklen_t peer_addrlen;
 
     while (true)
     {
-        clientsock = accept(this->servsock, &peer_addr, &peer_addrlen);
+        clientsock = accept(this->servsock, 0, 0);
+        // INFO("clientsock: ", clientsock, "  servsock: ", this->servsock);
 
         if (not this->app)
         {

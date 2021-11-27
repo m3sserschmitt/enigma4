@@ -6,19 +6,19 @@
 #include <string.h>
 #include "../util/util.hh"
 
-class Route
+class NetworkNode
 {
     AES_CRYPTO aesctx;
     RSA_CRYPTO rsactx;
     BYTES keyDigest;
     PLAINTEXT keyHexDigest;
     BYTES id;
-    Route *next;
-    Route *previous;
+    NetworkNode *next;
+    NetworkNode *previous;
 
 public:
 
-    Route()
+    NetworkNode()
     {
         this->aesctx = CRYPTO::AES_CRYPTO_new();
         this->rsactx = CRYPTO::RSA_CRYPTO_new();
@@ -38,7 +38,7 @@ public:
         memset(this->id, 0, 16 + 1);
     }
     
-    ~Route()
+    ~NetworkNode()
     {
         delete[] this->keyDigest;
         delete[] this->keyHexDigest;
@@ -53,7 +53,7 @@ public:
     
     RSA_CRYPTO getRsactx() { return this->rsactx; }
 
-    int aesctxDuplicate(Route *route)
+    int aesctxDuplicate(NetworkNode *route)
     {
         return CRYPTO::AES_ctx_dup(this->aesctx, route->aesctx);
     }
@@ -116,13 +116,13 @@ public:
     
     const BYTE *getId() { return this->id; }
 
-    void setPrevious(Route *previous) { this->previous = previous; }
+    void setPrevious(NetworkNode *previous) { this->previous = previous; }
     
-    Route *getPrevious() { return this->previous; }
+    NetworkNode *getPrevious() { return this->previous; }
 
-    void setNext(Route *next) { this->next = next; }
+    void setNext(NetworkNode *next) { this->next = next; }
     
-    Route *getNext() { return this->next; }
+    NetworkNode *getNext() { return this->next; }
 };
 
 #endif

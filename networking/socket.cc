@@ -4,9 +4,9 @@
 
 int Socket::createConnection(const std::string &host, const std::string &port)
 {
-    if (this->fd > 0)
+    if (this->isConnected())
     {
-        return -1;
+        this->closeSocket();
     }
 
     int s;
@@ -51,7 +51,7 @@ int Socket::createConnection(const std::string &host, const std::string &port)
 
 ssize_t Socket::writeData(const MessageBuilder &mb) const
 {
-    INFO("BYTES SENT: ", mb.getDatalen());
+    //INFO("BYTES SENT: ", mb.getDatalen());
     return write(this->fd, mb.getData(), mb.getDatalen());
 }
 

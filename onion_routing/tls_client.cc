@@ -9,7 +9,7 @@ int TLSClient::setupSocket(const std::string &host, const std::string &port)
         return -1;
     }
 
-    this->setSocket(new TLSSocket(host, port));
+    //this->setSocket(new TLSSocket(host, port));
     
     return 0;
 }

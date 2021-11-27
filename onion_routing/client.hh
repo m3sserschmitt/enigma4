@@ -12,49 +12,59 @@
 
 #include "../networking/socket.hh"
 
+
+typedef int (*IncomingMessageCallback)(MessageParser &);
+
 class Client
 {
-    struct listener_data
+    struct ClientListenerData
     {
-        Socket *sock;
+        Socket *clientSocket;
+
         RSA_CRYPTO rsactx;
         AES_CRYPTO aesctx;
+
         std::string clientAddress;
-        std::map<std::string, Route *> *routes;
+
+        std::map<std::string, NetworkNode *> *networkNodes;
+
+        IncomingMessageCallback incomingMessageCallback;
     };
 
-    Socket *sock;
-    Route *serv;
+    Socket *clientSocket;
+    NetworkNode *server;
 
-    std::map<std::string, Route *> routes;
+    std::map<std::string, NetworkNode *> networkNodes;
 
     std::string pubkey;
     std::string hexaddress;
 
     RSA_CRYPTO rsactx;
 
+    IncomingMessageCallback incomingMessageCallback;
+
     virtual int setupSocket(const std::string &host, const std::string &port);
 
-    const std::string setupDest(const std::string &keyfile, Route **route, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
+    const std::string setupDest(const std::string &keyfile, NetworkNode **route, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
 
-    int handshake(Route *route, bool add_pubkey = true, bool add_all_keys = false);
+    int handshake(NetworkNode *route, bool add_pubkey = true, bool add_all_keys = false);
 
-    static int exitSignal(MessageParser &mp, std::map<std::string, Route *> *routes);
-    
-    static int setupSessionFromHandshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx);
-    
-    static int action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, std::map<std::string, Route *> *routes);
+    static int exitSignal(MessageParser &mp, std::map<std::string, NetworkNode *> *routes);
 
-    static int decryptIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes);
-    
+    static int setupSessionFromHandshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, NetworkNode *> *routes, AES_CRYPTO aesctx);
+
+    static int action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, std::map<std::string, NetworkNode *> *routes);
+
+    static int decryptIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, NetworkNode *> *routes);
+
     static void *dataListener(void *node);
 
-    int writeDest(MessageBuilder &mb, Route *route);
+    int writeDest(MessageBuilder &mb, NetworkNode *route);
 
-    void cleanupCircuit(Route *route);
+    void cleanupCircuit(NetworkNode *route);
 
     Client(const Client &c);
-    
+
     const Client &operator=(const Client &c);
 
 public:
@@ -73,7 +83,7 @@ public:
      * 
      * @return const std::string Server address.
      */
-    const std::string getServerAddress() const { return this->serv->getPubkeyHexDigest(); }
+    const std::string getServerAddress() const { return this->server->getPubkeyHexDigest(); }
 
     /**
      * @brief Create a connection to specified server.
@@ -111,6 +121,17 @@ public:
     int writeData(const BYTE *data, SIZE datalen, const std::string &address);
 
     /**
+     * @brief This method sends data directly to server, no routing applied.
+     * 
+     * @param mp Message object to be sent
+     * @return int 0 if success, -1 if failure.
+     */
+    int writeDataWithNoRouting(MessageParser &mp)
+    {
+        return this->clientSocket->writeData(mp.getData(), mp.getDatalen());
+    }
+
+    /**
      * @brief Send EXIT message over circuit
      * 
      * @param address Destination address (typically last address in circuit).
@@ -118,18 +139,13 @@ public:
      */
     int exitCircuit(const std::string &address);
 
-    Socket *getSocket() { return this->sock; }
-    void setSocket(Socket *s) { this->sock = s; }
+    Socket *getSocket() { return this->clientSocket; }
 
-    Connection *createConnectionStructure() const
-    {
-        Socket *new_socket = sock->makeSocketCopy();
+    void setSocket(Socket *s) { this->clientSocket = s; }
 
-        Connection *new_connection = new Connection(new_socket);
-        new_connection->setAddress(this->getServerAddress());
+    bool isConnected() const { return this->clientSocket->isConnected(); }
 
-        return new_connection;
-    }
+    void onIncomingMessage(IncomingMessageCallback callback) { this->incomingMessageCallback = callback; }
 };
 
 #endif

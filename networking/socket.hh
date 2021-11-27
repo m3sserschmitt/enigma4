@@ -26,6 +26,8 @@ class Socket
         {
             printErrorDetails();
 
+            //INFO("Socket: ", this->fd);
+
             return -1;
         }
 
@@ -89,16 +91,18 @@ public:
                buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
                delta(0){};
 
-    Socket(int fd) : fd(fd),
-                     buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
-                     delta(0){};
+    // Socket(int fd) : fd(fd),
+    //                  buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
+    //                  delta(0){};
                      
-    Socket(const std::string &host, const std::string port) : fd(-1),
-                                                              buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
-                                                              delta(0)
-    {
-        this->createConnection(host, port);
-    };
+    // Socket(const std::string &host, const std::string port) : fd(-1),
+    //                                                           buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
+    //                                                           delta(0),
+    //                                                           host(host),
+    //                                                           port(port)
+    // {
+    //     // this->createConnection(host, port);
+    // };
 
     virtual ~Socket()
     {
@@ -111,7 +115,7 @@ public:
 
     int getFd() const { return this->fd; }
 
-    void closeFd()
+    void closeSocket()
     {
         close(this->fd);
         this->fd = -1;
@@ -128,17 +132,6 @@ public:
     virtual const CHAR *getCipher() const { return "(NONE)"; }
 
     static SIZE getMaxSocketBuffRead() { return SOCKET_MAX_BUFFER_SIZE; }
-
-    Socket *makeSocketCopy() const
-    {
-        Socket *copy = new Socket;
-
-        copy->fd = this->fd;
-        memcpy(copy->buffer, this->buffer, SOCKET_MAX_BUFFER_SIZE);
-        copy->delta = this->delta;
-
-        return copy;
-    }
 };
 
 #endif

@@ -23,17 +23,17 @@ class TLSSocket : public Socket
 public:
     TLSSocket() : Socket() { this->sslInit(); };
 
-    TLSSocket(int fd) : Socket(fd)
-    {
-        this->sslInit();
-        this->sslWrapFd();
-    }
+    // TLSSocket(int fd) : Socket(fd)
+    // {
+    //     this->sslInit();
+    //     this->sslWrapFd();
+    // }
     
-    TLSSocket(const std::string host, const std::string &port) : Socket(host, port)
-    {
-        this->sslInit();
-        this->sslWrapFd();
-    }
+    // TLSSocket(const std::string host, const std::string &port) : Socket(host, port)
+    // {
+    //     this->sslInit();
+    //     this->sslWrapFd();
+    // }
 
     ~TLSSocket()
     {

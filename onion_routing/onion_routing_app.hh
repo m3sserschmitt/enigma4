@@ -10,6 +10,9 @@
 #include "connection.hh"
 #include "client.hh"
 
+#include "../networking/network_bridge.hh"
+
+
 class OnionRoutingApp : public App
 {
     static RSA_CRYPTO rsactx;
@@ -20,9 +23,12 @@ class OnionRoutingApp : public App
     static std::string pubkey;
     static std::string address;
 
-    static std::map<std::string, Connection *> clients;
+    static std::map<std::string, Connection *> localConnections;
+
+    static NetworkBridge *networkBridge;
 
     OnionRoutingApp(const std::string &pubkey_file, const std::string &privkey_file);
+    
     ~OnionRoutingApp()
     {
         CRYPTO::RSA_CRYPTO_free(rsactx);
@@ -56,6 +62,7 @@ class OnionRoutingApp : public App
      * @return int 0 if success, -1 if failure.
      */
     static int tryHandshake(MessageParser &mp, Connection *conn);
+    
     static int action(MessageParser &mp, Connection *conn);
 
     /**
@@ -81,6 +88,18 @@ class OnionRoutingApp : public App
      */
     static void *newThread(void *);
 
+    /**
+     * @brief This method is called when a message from a remote server arrives and
+     * destination address could not be found through remote addresses. 
+     * 
+     * @param mp Message object to be forwarded.
+     * @return int 0 if success -1 if failure.
+     */
+    static int onMessageFromNetworkBridge(MessageParser mp)
+    {
+        return forwardMessage(mp);
+    }
+
 public:
     /**
      * @brief Create a app object
@@ -90,6 +109,17 @@ public:
      * @return OnionRoutingApp& reference to newly created object.
      */
     static OnionRoutingApp &createApp(const std::string &pubkey_file, const std::string &privkey_file);
+
+    /**
+     * @brief Attach network bridge object used for comunications with remote servers.
+     * 
+     * @param networkBridge NetworkBridge Object to be used for remote connections.
+     */
+    void attachNetworkBridge(NetworkBridge *networkBridge)
+    {
+        this->networkBridge = networkBridge;
+        this->networkBridge->onIncomingMessage(forwardMessage);
+    }
 
     /**
      * @brief Connects to all addresses from netfile. The netfile must contain

@@ -2,6 +2,8 @@
 
 #include "../onion_routing/onion_routing_app.hh"
 
+#include "../networking/network_bridge.hh"
+
 #include "../util/cmd.hh"
 #include "../util/debug.hh"
 
@@ -46,6 +48,10 @@ int main(int argc, char **argv)
     Server *server = new Server(host, port);
 
     OnionRoutingApp &app = OnionRoutingApp::createApp(pubkey, privkey);
+    NetworkBridge &networkBridge = NetworkBridge::createNetworkBridge(pubkey, privkey);
+
+    app.attachNetworkBridge(&networkBridge);
+
     const char *netfile = getCmdOption(argv, argc, "-netfile");
 
     if (netfile)

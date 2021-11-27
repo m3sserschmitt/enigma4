@@ -11,6 +11,7 @@ add_library(util STATIC util/cmd.cc util/system_time.cc util/util.cc util/error.
 add_library(essentials STATIC
 networking/socket.cc 
 networking/tls_socket.cc 
+networking/network_bridge.cc
 
 protocol/message.cc 
 protocol/message_builder.cc 

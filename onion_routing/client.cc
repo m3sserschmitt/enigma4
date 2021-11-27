@@ -7,12 +7,13 @@
 
 using namespace std;
 
+
 Client::Client(const string &pubkey, const string &privkey)
 {
     this->pubkey = (PLAINTEXT)readFile(pubkey, "rb");
 
-    this->serv = 0;
-    this->sock = 0;
+    this->server = 0;
+    this->clientSocket = new Socket();
 
     KEY_UTIL::getKeyHexDigest(this->pubkey, this->hexaddress);
 
@@ -36,30 +37,30 @@ Client::Client(const string &pubkey, const string &privkey)
 
 Client::~Client()
 {
-    std::map<std::string, Route *>::iterator it = routes.begin();
-    std::map<std::string, Route *>::iterator it_end = routes.end();
+    std::map<std::string, NetworkNode *>::iterator it = networkNodes.begin();
+    std::map<std::string, NetworkNode *>::iterator it_end = networkNodes.end();
 
     for (; it != it_end; it++)
     {
-        if (it->second != this->serv)
+        if (it->second != this->server)
         {
             delete it->second;
         }
     }
 
-    delete this->sock;
-    delete this->serv;
+    delete this->clientSocket;
+    delete this->server;
 
     CRYPTO::RSA_CRYPTO_free(this->rsactx);
 
-    this->sock = 0;
-    this->serv = 0;
+    this->clientSocket = 0;
+    this->server = 0;
     this->rsactx = 0;
 }
 
-int Client::setupSessionFromHandshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, Route *> *routes, AES_CRYPTO aesctx)
+int Client::setupSessionFromHandshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, NetworkNode *> *routes, AES_CRYPTO aesctx)
 {
-    Route *newroute = new Route;
+    NetworkNode *newroute = new NetworkNode;
 
     newroute->aesctxDuplicate(aesctx);
 
@@ -70,17 +71,17 @@ int Client::setupSessionFromHandshake(MessageParser &mp, RSA_CRYPTO rsactx, std:
 
     mp.removeId();
 
-    routes->insert(pair<string, Route *>(mp.getParsedId(), newroute));
+    routes->insert(pair<string, NetworkNode *>(mp.getParsedId(), newroute));
 
     return 0;
 }
 
-int Client::exitSignal(MessageParser &mp, std::map<string, Route *> *routes)
+int Client::exitSignal(MessageParser &mp, std::map<string, NetworkNode *> *routes)
 {
     mp.removeId();
     const string &session_id = mp.getParsedId();
 
-    Route *route = (*routes)[session_id];
+    NetworkNode *route = (*routes)[session_id];
 
     if (not route)
     {
@@ -95,10 +96,10 @@ int Client::exitSignal(MessageParser &mp, std::map<string, Route *> *routes)
     return 0;
 }
 
-int Client::decryptIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, map<string, Route *> *routes)
+int Client::decryptIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, map<string, NetworkNode *> *routes)
 {
     mp.removeId();
-    Route *route = (*routes)[mp.getParsedId()];
+    NetworkNode *route = (*routes)[mp.getParsedId()];
 
     if ((not route or mp.decrypt(route) < 0))
     {
@@ -110,7 +111,7 @@ int Client::decryptIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, map<str
     return 0;
 }
 
-int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<string, Route *> *routes)
+int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<string, NetworkNode *> *routes)
 {
     if (mp.isHandshake())
     {
@@ -140,42 +141,50 @@ int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<
 
 void *Client::dataListener(void *args)
 {
-    listener_data *listener = (listener_data *)args;
+    ClientListenerData *clientListenerData = (ClientListenerData *)args;
 
-    Socket *sock = listener->sock;
+    Socket *clientSocket = clientListenerData->clientSocket;
 
-    map<string, Route *> *routes = listener->routes;
+    map<string, NetworkNode *> *networkNodes = clientListenerData->networkNodes;
 
-    RSA_CRYPTO rsactx = listener->rsactx;
-    AES_CRYPTO aesctx = listener->aesctx;
+    RSA_CRYPTO rsactx = clientListenerData->rsactx;
+    AES_CRYPTO aesctx = clientListenerData->aesctx;
 
-    string client_address = listener->clientAddress;
-    string next_address;
+    string clientAddress = clientListenerData->clientAddress;
+
+    string nextAddress;
 
     MessageParser mp;
 
-    while (sock->readNetworkData(mp) > 0)
+    IncomingMessageCallback incomingMessageCallback = clientListenerData->incomingMessageCallback;
+
+    while (clientSocket->readNetworkData(mp) > 0)
     {
         NEWLINE();
 
-        if (action(mp, rsactx, aesctx, routes) == 0)
+        if (action(mp, rsactx, aesctx, networkNodes) == 0)
         {
             mp.clear();
             continue;
         }
 
-        if (decryptIncomingMessage(mp, rsactx, routes) < 0)
+        if (decryptIncomingMessage(mp, rsactx, networkNodes) < 0)
         {
             mp.clear();
             continue;
         }
 
-        if(mp.getParsedNextAddress() != client_address)
+        if(mp.getParsedNextAddress() != clientAddress)
         {
             WARNING("Incoming message destination don't match local address.");
         }
 
-        INFO("Message received; message content: ", mp.getPayload());
+        //INFO("Message received; message content: ", mp.getPayload());
+        
+        if(incomingMessageCallback)
+        {
+            incomingMessageCallback(mp);
+        }
 
         mp.clear();
     }
@@ -185,14 +194,14 @@ void *Client::dataListener(void *args)
 
 int Client::setupSocket(const std::string &host, const std::string &port)
 {
-    if (this->sock)
+    if (this->clientSocket->isConnected())
     {
-        return -1;
+        this->clientSocket->closeSocket();
     }
 
-    this->sock = new Socket(host, port);
+    this->clientSocket->createConnection(host, port);
 
-    if (not this->sock->isConnected())
+    if (not this->clientSocket->isConnected())
     {
         return -1;
     }
@@ -200,7 +209,7 @@ int Client::setupSocket(const std::string &host, const std::string &port)
     return 0;
 }
 
-const string Client::setupDest(const string &keyfile, Route **route, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
+const string Client::setupDest(const string &keyfile, NetworkNode **route, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
 {
     PLAINTEXT pubkey = (PLAINTEXT)readFile(keyfile, "rb");
 
@@ -214,9 +223,9 @@ const string Client::setupDest(const string &keyfile, Route **route, const BYTE 
         return "";
     }
 
-    Route *dest_route = new Route;
+    NetworkNode *dest_route = new NetworkNode;
 
-    if (this->serv and dest_route->aesctxDuplicate(this->serv) < 0)
+    if (this->server and dest_route->aesctxDuplicate(this->server) < 0)
     {
         return "";
     }
@@ -235,7 +244,7 @@ const string Client::setupDest(const string &keyfile, Route **route, const BYTE 
 
     const CHAR *hexdigest = dest_route->getPubkeyHexDigest();
 
-    this->routes[hexdigest] = dest_route;
+    this->networkNodes[hexdigest] = dest_route;
 
     if (route)
     {
@@ -247,14 +256,14 @@ const string Client::setupDest(const string &keyfile, Route **route, const BYTE 
 
 const string Client::addNode(const std::string &keyfile, const std::string &last_address, bool identify, bool add_keys, bool make_new_session)
 {
-    Route *last_route = routes[last_address];
+    NetworkNode *last_route = networkNodes[last_address];
 
     if (not last_route)
     {
         return "";
     }
 
-    Route *new_route;
+    NetworkNode *new_route;
     string dest_address;
 
     if (make_new_session)
@@ -286,43 +295,48 @@ int Client::createConnection(const string &host, const string &port, const strin
         return -1;
     }
 
-    //std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    if(not this->clientSocket->isConnected())
+    {
+        ERROR("Could not open connection to ", host, ":", port);
+        return -1;
+    }
 
-    string serv_address = this->setupDest(keyfile, &this->serv);
+    string serv_address = this->setupDest(keyfile, &this->server);
 
-    if (not this->serv)
+    if (not this->server)
     {
         return -1;
     }
 
     
-    if (this->handshake(this->serv) < 0)
+    if (this->handshake(this->server) < 0)
     {
         return -1;
     }
 
-    INFO("HANDSHAKE SENT");
+    //INFO("HANDSHAKE SENT");
 
     if (start_listener)
     {
-        listener_data *listener = new listener_data;
+        ClientListenerData *clientListenerData = new ClientListenerData;
 
-        listener->routes = &this->routes;
-        listener->sock = this->sock;
-        listener->rsactx = this->rsactx;
-        listener->aesctx = this->serv->getAesctx();
-        listener->clientAddress = this->hexaddress;
+        clientListenerData->networkNodes = &this->networkNodes;
+        clientListenerData->clientSocket = this->clientSocket;
+        clientListenerData->rsactx = this->rsactx;
+        clientListenerData->aesctx = this->server->getAesctx();
+        clientListenerData->clientAddress = this->hexaddress;
+        clientListenerData->incomingMessageCallback = this->incomingMessageCallback;
 
         pthread_t new_thread;
-        pthread_create(&new_thread, 0, this->dataListener, listener);
+        pthread_create(&new_thread, 0, this->dataListener, clientListenerData);
     }
 
     return 0;
 }
 
-int Client::writeDest(MessageBuilder &mb, Route *route)
+int Client::writeDest(MessageBuilder &mb, NetworkNode *route)
 {
-    Route *p = route;
+    NetworkNode *p = route;
 
     if (mb.isHandshake())
     {
@@ -330,7 +344,7 @@ int Client::writeDest(MessageBuilder &mb, Route *route)
         p = p->getPrevious();
     }
 
-    Route *next;
+    NetworkNode *next;
 
     for (; p; p = p->getPrevious())
     {
@@ -345,10 +359,10 @@ int Client::writeDest(MessageBuilder &mb, Route *route)
         mb.set_id(p->getId());
     }
 
-    return this->sock->writeData(mb) < 0 ? -1 : 0;
+    return this->clientSocket->writeData(mb) < 0 ? -1 : 0;
 }
 
-int Client::handshake(Route *route, bool add_pubkey, bool add_all_keys)
+int Client::handshake(NetworkNode *route, bool add_pubkey, bool add_all_keys)
 {
     if (not route)
     {
@@ -370,16 +384,16 @@ int Client::handshake(Route *route, bool add_pubkey, bool add_all_keys)
     return this->writeDest(mb, route) < 0 ? -1 : 0;
 }
 
-void Client::cleanupCircuit(Route *route)
+void Client::cleanupCircuit(NetworkNode *route)
 {
-    Route *next;
-    for (Route *p = route->getPrevious(); p; p = p->getPrevious())
+    NetworkNode *next;
+    for (NetworkNode *p = route->getPrevious(); p; p = p->getPrevious())
     {
         next = p->getNext();
 
         if (next)
         {
-            this->routes.erase(next->getPubkeyHexDigest());
+            this->networkNodes.erase(next->getPubkeyHexDigest());
             delete next;
             next = 0;
         }
@@ -388,7 +402,7 @@ void Client::cleanupCircuit(Route *route)
 
 int Client::exitCircuit(const string &address)
 {
-    Route *route = this->routes[address];
+    NetworkNode *route = this->networkNodes[address];
 
     if (not route)
     {
@@ -408,7 +422,7 @@ int Client::exitCircuit(const string &address)
 int Client::writeData(const BYTE *data, SIZE datalen, const string &address)
 {
     MessageBuilder mb(data, datalen);
-    Route *route = this->routes[address];
+    NetworkNode *route = this->networkNodes[address];
 
     if (not route)
     {

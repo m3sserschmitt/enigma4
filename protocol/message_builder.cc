@@ -29,12 +29,12 @@ int MessageBuilder::encrypt(AES_CRYPTO ctx)
     return 0;
 }
 
-int MessageBuilder::encrypt(Route *route)
+int MessageBuilder::encrypt(NetworkNode *route)
 {
     return this->encrypt(route->getAesctx());
 }
 
-int MessageBuilder::handshakeSetupSessionKey(Route *route, bool add_all_keys)
+int MessageBuilder::handshakeSetupSessionKey(NetworkNode *route, bool add_all_keys)
 {
     BYTES keys = new BYTE[32 * 10];
     BYTES encrkeys = 0;
@@ -46,7 +46,7 @@ int MessageBuilder::handshakeSetupSessionKey(Route *route, bool add_all_keys)
 
     if (add_all_keys)
     {    
-        for (Route *p = route; p; p = p->getPrevious(), keys_ptr += 32)
+        for (NetworkNode *p = route; p; p = p->getPrevious(), keys_ptr += 32)
         {
             if (CRYPTO::AES_read_key(route->getAesctx(), 32, &keys_ptr) < 0)
             {
@@ -119,7 +119,7 @@ int MessageBuilder::signMessage(RSA_CRYPTO ctx)
     return 0;
 }
 
-int MessageBuilder::handshake(Route *route, RSA_CRYPTO signrsactx, const string &pubkeypem, bool add_all_keys)
+int MessageBuilder::handshake(NetworkNode *route, RSA_CRYPTO signrsactx, const string &pubkeypem, bool add_all_keys)
 {
     if (this->handshakeSetupSessionKey(route, add_all_keys) < 0)
     {

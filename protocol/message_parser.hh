@@ -109,11 +109,11 @@ public:
         return this->getPayloadSize() and not this->getRequiredSize();
     }
 
-    int decrypt(Route *route);
+    int decrypt(NetworkNode *route);
 
     int decrypt(Connection *conn);
 
-    int handshake(RSA_CRYPTO rsactx, Route *route);
+    int handshake(RSA_CRYPTO rsactx, NetworkNode *route);
 
     int handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
 
