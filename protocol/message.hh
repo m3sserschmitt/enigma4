@@ -22,10 +22,12 @@ protected:
     {
         return this->data + MESSAGE_ENC_ALGORITHM_OFFSET;
     }
+
     BYTES getPayloadSizePtr() const
     {
         return this->data + MESSAGE_SIZE_SECTION_OFFSET;
     }
+    
     BYTES getPayloadPtr() const
     {
         return this->data + MESSAGE_PAYLOAD_OFFSET;

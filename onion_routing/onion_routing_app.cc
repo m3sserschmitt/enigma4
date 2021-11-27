@@ -18,7 +18,9 @@ string OnionRoutingApp::privkeyfile;
 string OnionRoutingApp::address;
 string OnionRoutingApp::pubkey;
 
-std::map<string, Connection *> OnionRoutingApp::clients;
+std::map<string, Connection *> OnionRoutingApp::localConnections;
+
+NetworkBridge *OnionRoutingApp::networkBridge = 0;
 
 OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privkey_file)
 {
@@ -36,32 +38,15 @@ OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privke
     KEY_UTIL::getKeyHexDigest(key, this->address);
 }
 
-int OnionRoutingApp::connectPeer(const string &host, const string &port, const string &pubkeyfile)
+int OnionRoutingApp::joinNetwork(const string &netfile)
 {
-    Client *client = new Client(OnionRoutingApp::pubkeyfile, OnionRoutingApp::privkeyfile);
-
-    if (client->createConnection(host, port, pubkeyfile, 0) < 0)
+    if(not networkBridge)
     {
-        FAILURE("Connection to ", host, ":", port, " failed.");
+        ERROR("NetworkBridge Object not set for remote connections.")
+
         return -1;
     }
 
-    SUCCESS("Connection to ", host, ":", port, " (address: ", client->getServerAddress(), ") succeeded.");
-
-    Connection *new_connection = client->createConnectionStructure();
-
-    clients[client->getServerAddress()] = new_connection;
-
-    pthread_t thread;
-    pthread_create(&thread, 0, this->newThread, (void *)new_connection) ? 0 : -1;
-
-    delete client;
-
-    return 0;
-}
-
-int OnionRoutingApp::joinNetwork(const string &netfile)
-{
     string netfile_content = (const CHAR *)readFile(netfile, "r");
 
     vector<string> lines = split(netfile_content, "\n", -1);
@@ -81,15 +66,16 @@ int OnionRoutingApp::joinNetwork(const string &netfile)
     {
         tokens = split(*it, " ", -1);
 
+        // all entries from netfile should contain a hostname, a port number and a public key file
         if (tokens.size() != 3)
         {
             valid_entries--;
             continue;
         }
 
-        if (connectPeer(tokens[0], tokens[1], tokens[2]) == 0)
+        if(networkBridge->connectRemoteServer(tokens[0], tokens[1], tokens[2]) == 0)
         {
-            connections++;
+            connections ++;
         }
     }
 
@@ -129,11 +115,6 @@ int OnionRoutingApp::tryHandshake(MessageParser &mp, Connection *conn)
         return -1;
     }
 
-    // mp.remove_id();
-
-    // NEWLINE();
-    // INFO("Handshake received; Session ID: ", mp.get_parsed_id());
-
     if (conn->addSession(mp, OnionRoutingApp::rsactx) < 0)
     {
         FAILURE("Handshake failed for session ID: ", mp.getParsedId());
@@ -142,7 +123,7 @@ int OnionRoutingApp::tryHandshake(MessageParser &mp, Connection *conn)
 
     SUCCESS("Handshake completed: ", conn->getAddress(), " for session ID: ", mp.getParsedId());
 
-    OnionRoutingApp::clients.insert(pair<string, Connection *>(mp.getParsedAddress(), conn));
+    OnionRoutingApp::localConnections.insert(pair<string, Connection *>(mp.getParsedAddress(), conn));
 
     return 0;
 }
@@ -152,17 +133,25 @@ int OnionRoutingApp::forwardMessage(MessageParser &mp)
     mp.removeNext();
     string next_address = mp.getParsedNextAddress();
 
-    map<string, Connection *>::iterator next = clients.find(next_address);
+    map<string, Connection *>::iterator next = localConnections.find(next_address);
 
     INFO("Next address: ", next_address, "; session ID: ", mp.getParsedId());
 
-    if (next == clients.end())
+    // try to find next address into local connections
+    if (next == localConnections.end())
     {
-        FAILURE("Address not found: ", next_address);
-        return -1;
-    }
+        // if address not found, try to find it into remote addresses
+        if(networkBridge->forwardMessage(mp) < 0)
+        {
+            FAILURE("Address not found ", next_address);
 
-    INFO("Forwarding to ", next->first);
+            return -1;
+        }
+
+        INFO("Forwarding to ", next->first);
+
+        return 0;
+    }
 
     return next->second->writeData(mp.getData(), mp.getDatalen()) > 0 ? 0 : -1;
 }
@@ -180,7 +169,7 @@ int OnionRoutingApp::action(MessageParser &mp, Connection *conn)
     }
 
     string session_id = mp.getParsedId();
-    INFO("Message decrypted successfully; Session ID: ", session_id);
+    // INFO("Message decrypted successfully; Session ID: ", session_id);
 
     if (mp.isExit())
     {
@@ -189,12 +178,7 @@ int OnionRoutingApp::action(MessageParser &mp, Connection *conn)
         SUCCESS("Session with ID ", session_id, " erased.");
     }
 
-    if (forwardMessage(mp) < 0)
-    {
-        return -1;
-    }
-
-    return 0;
+    return forwardMessage(mp);
 }
 
 int OnionRoutingApp::redirect(Connection *const conn)
@@ -226,7 +210,7 @@ void *OnionRoutingApp::newThread(void *args)
     // this_thread::sleep_for(2000ms);
     redirect(conn);
 
-    clients.erase(conn->getAddress());
+    localConnections.erase(conn->getAddress());
     INFO("Connection to ", conn->getAddress(), " closed.");
 
     delete conn;
@@ -237,7 +221,13 @@ void *OnionRoutingApp::newThread(void *args)
 int OnionRoutingApp::handleClient(int clientsock)
 {
     pthread_t thread;
-    Connection *connection = new Connection(new Socket(clientsock));
+
+    Socket *sock = new Socket();
+    sock->wrap(clientsock);
+
+    // INFO("Client socket: ", clientsock, "  ", sock->getFd());
+
+    Connection *connection = new Connection(sock);
 
     return pthread_create(&thread, 0, this->newThread, (void *)connection) ? 0 : -1;
 }

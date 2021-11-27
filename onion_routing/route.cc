@@ -1,6 +1,6 @@
 #include "route.hh"
 
-int Route::aesctxInit(const BYTE *key, SIZE keylen)
+int NetworkNode::aesctxInit(const BYTE *key, SIZE keylen)
 {
     if (key and keylen)
     {
