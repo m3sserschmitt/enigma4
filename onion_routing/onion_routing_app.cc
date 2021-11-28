@@ -148,7 +148,7 @@ int OnionRoutingApp::forwardMessage(MessageParser &mp)
             return -1;
         }
 
-        INFO("Forwarding to ", next->first);
+        INFO("Forwarding to ", next_address);
 
         return 0;
     }
