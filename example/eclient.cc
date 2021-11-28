@@ -15,6 +15,13 @@ void gen_keys()
     CRYPTO::RSA_generate_keys("client_public2.pem", "client_private2.pem", 4096, 0, 0, 0, 0);
 }
 
+int printMessageContent(MessageParser &mp)
+{
+    cout << "New message received:" << mp.getPayload() << "\n";
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
 
@@ -43,6 +50,8 @@ int main(int argc, char **argv)
     }
 
     Client client(client_pubkey, client_privkey);
+    client.onIncomingMessage(printMessageContent);
+
     cout << "[+] Client address: " << client.getClientHexaddress() << "\n";
 
     string circuit_file_content = (const char *)readFile(circuit_file, "r");
