@@ -59,7 +59,7 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
 int MessageParser::decrypt(NetworkNode *route)
 {
     this->removeId();
-    AES_CRYPTO ctx = route->getAesctx();
+    AES_CRYPTO ctx = route->getAES();
 
     return this->decrypt(ctx);
 }

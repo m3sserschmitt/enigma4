@@ -107,6 +107,7 @@ public:
     virtual ~Socket()
     {
         delete[] buffer;
+        buffer = 0;
     }
 
     virtual int createConnection(const std::string &host, const std::string &port);

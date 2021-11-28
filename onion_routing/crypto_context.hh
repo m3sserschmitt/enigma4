@@ -10,6 +10,10 @@ class CryptoContext
     AES_CRYPTO aesctx;
     RSA_CRYPTO rsactx;
 
+    CryptoContext(const CryptoContext &);
+
+    const CryptoContext &operator=(const CryptoContext &);
+
 public:
     CryptoContext()
     {
@@ -18,6 +22,12 @@ public:
 
         CRYPTO::AES_iv_autoset(1, this->aesctx);
         CRYPTO::AES_iv_append(1, this->aesctx);
+    }
+
+    ~CryptoContext()
+    {
+        CRYPTO::RSA_CRYPTO_free(this->rsactx);
+        CRYPTO::AES_CRYPTO_free(this->aesctx);
     }
 
     int rsaInitPubkey(const std::string &pubkeypem)

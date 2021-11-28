@@ -207,7 +207,6 @@ void *OnionRoutingApp::newThread(void *args)
         return 0;
     }
 
-    // this_thread::sleep_for(2000ms);
     redirect(conn);
 
     localConnections.erase(conn->getAddress());

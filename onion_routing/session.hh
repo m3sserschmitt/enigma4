@@ -50,7 +50,7 @@ public:
 
     void cleanup(const std::string &id)
     {
-        CRYPTO::AES_CRYPTO_free_keys(keys[id]);
+        CRYPTO::AES_CRYPTO_free(keys[id]);
         keys.erase(id);
     }
     

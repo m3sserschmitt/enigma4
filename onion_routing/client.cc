@@ -35,11 +35,8 @@ Client::~Client()
     delete this->clientSocket;
     delete this->server;
 
-    //CRYPTO::RSA_CRYPTO_free(this->rsactx);
-
     this->clientSocket = 0;
     this->server = 0;
-    //this->rsactx = 0;
 }
 
 int Client::initCryptoContext(const string &privkeyfile)
@@ -71,9 +68,9 @@ int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *
 {
     NetworkNode *newroute = new NetworkNode;
 
-    newroute->aesctxDuplicate(cryptoContext->getAES());
+    newroute->aesctxDuplicate(cryptoContext);
 
-    if (mp.handshake(cryptoContext->getRSA(), newroute->getAesctx()) < 0)
+    if (mp.handshake(cryptoContext->getRSA(), newroute->getAES()) < 0)
     {
         return -1;
     }
@@ -224,9 +221,9 @@ const string Client::setupNetworkNode(const string &keyfile, NetworkNode **route
 
     NetworkNode *newNetworkNode = new NetworkNode;
 
-    newNetworkNode->aesctxDuplicate(this->cryptoContext.getAES());
+    newNetworkNode->aesctxDuplicate(&this->cryptoContext);
 
-    if (newNetworkNode->rsactxInit(pubkey) < 0)
+    if (newNetworkNode->pubkeyInit(pubkey) < 0)
     {
         return "";
     }

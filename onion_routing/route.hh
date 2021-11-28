@@ -2,17 +2,18 @@
 #define ROUTE_HH
 
 #include "../libcryptography/include/cryptography.hh"
-
+#include "crypto_context.hh"
 #include <string.h>
 #include "../util/util.hh"
 
 class NetworkNode
 {
-    AES_CRYPTO aesctx;
-    RSA_CRYPTO rsactx;
+    CryptoContext cryptoContext;
+
     BYTES keyDigest;
     PLAINTEXT keyHexDigest;
     BYTES id;
+    
     NetworkNode *next;
     NetworkNode *previous;
 
@@ -20,12 +21,6 @@ public:
 
     NetworkNode()
     {
-        this->aesctx = CRYPTO::AES_CRYPTO_new();
-        this->rsactx = CRYPTO::RSA_CRYPTO_new();
-
-        CRYPTO::AES_iv_autoset(1, this->aesctx);
-        CRYPTO::AES_iv_append(1, this->aesctx);
-
         this->next = 0;
         this->previous = 0;
 
@@ -49,39 +44,42 @@ public:
         this->id = 0;
     }
 
-    AES_CRYPTO getAesctx() { return this->aesctx; }
+    AES_CRYPTO getAES() { return this->cryptoContext.getAES(); }
     
-    RSA_CRYPTO getRsactx() { return this->rsactx; }
+    RSA_CRYPTO getRSA() { return this->cryptoContext.getRSA(); }
 
-    int aesctxDuplicate(NetworkNode *route)
+    int aesctxDuplicate(NetworkNode *node)
     {
-        return CRYPTO::AES_ctx_dup(this->aesctx, route->aesctx);
-    }
-    
-    int aesctxDuplicate(AES_CRYPTO ctx)
-    {
-        return CRYPTO::AES_ctx_dup(this->aesctx, ctx);
+        return CRYPTO::AES_ctx_dup(this->cryptoContext.getAES(), node->cryptoContext.getAES());
     }
 
-    int rsactxInit(const std::string &pubkey)
+    int aesctxDuplicate(CryptoContext *cryptoContext)
     {
-        if (CRYPTO::RSA_init_key(pubkey, 0, 0, PUBLIC_KEY, this->rsactx) < 0)
+        return CRYPTO::AES_ctx_dup(this->cryptoContext.getAES(), cryptoContext->getAES());
+    }
+    
+    int pubkeyInit(const std::string &pubkeypem)
+    {
+        if (this->cryptoContext.rsaInitPubkey(pubkeypem) < 0)
         {
             return -1;
         }
 
-        KEY_UTIL::getKeyDigest(pubkey, &this->keyDigest);
+        KEY_UTIL::getKeyDigest(pubkeypem, &this->keyDigest);
         CRYPTO::hex(this->keyDigest, 32, &this->keyHexDigest);
 
-        return CRYPTO::RSA_init_ctx(this->rsactx, ENCRYPT);
+        return this->cryptoContext.rsaInitEncryption();
     }
     
-    int aesctxInit(const BYTE *key = 0, SIZE keylen = 32);
+    int aesctxInit(const BYTE *key = 0, SIZE keylen = 32)
+    {
+        return this->cryptoContext.aesInit(key, keylen);
+    }
 
-    const CHAR *encodeKey() const
+    const CHAR *encodeKey()
     {
         BYTES key = 0;
-        CRYPTO::AES_read_key(this->aesctx, 32, &key);
+        CRYPTO::AES_read_key(this->cryptoContext.getAES(), 32, &key);
 
         BASE64 base64key = 0;
         CRYPTO::base64_encode(key, 32, &base64key);
