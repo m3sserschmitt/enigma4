@@ -7,32 +7,16 @@
 
 using namespace std;
 
-
-Client::Client(const string &pubkey, const string &privkey)
+Client::Client(const string &pubkeyfile, const string &privkeyfile)
 {
-    this->pubkey = (PLAINTEXT)readFile(pubkey, "rb");
+    this->pubkeyPEM = (PLAINTEXT)readFile(pubkeyfile, "rb");
 
     this->server = 0;
     this->clientSocket = new Socket();
 
-    KEY_UTIL::getKeyHexDigest(this->pubkey, this->hexaddress);
+    KEY_UTIL::getKeyHexDigest(this->pubkeyPEM, this->hexaddress);
 
-    this->rsactx = CRYPTO::RSA_CRYPTO_new();
-
-    if (CRYPTO::RSA_init_key_file(privkey, 0, 0, PRIVATE_KEY, this->rsactx) < 0)
-    {
-        FAILURE("Client Private Key initialization failed.");
-    }
-
-    if (CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT) < 0)
-    {
-        FAILURE("Client Private Key decryption initialization failed.")
-    }
-
-    if (CRYPTO::RSA_init_ctx(this->rsactx, SIGN) < 0)
-    {
-        FAILURE("Client Private Key signing initialization failed.");
-    }
+    this->initCryptoContext(privkeyfile);
 }
 
 Client::~Client()
@@ -51,20 +35,45 @@ Client::~Client()
     delete this->clientSocket;
     delete this->server;
 
-    CRYPTO::RSA_CRYPTO_free(this->rsactx);
+    //CRYPTO::RSA_CRYPTO_free(this->rsactx);
 
     this->clientSocket = 0;
     this->server = 0;
-    this->rsactx = 0;
+    //this->rsactx = 0;
 }
 
-int Client::setupSessionFromHandshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, NetworkNode *> *routes, AES_CRYPTO aesctx)
+int Client::initCryptoContext(const string &privkeyfile)
+{
+    if (this->cryptoContext.rsaInitPrivkeyFile(privkeyfile) < 0)
+    {
+        return -1;
+    }
+
+    if (this->cryptoContext.rsaInitDecryption() < 0)
+    {
+        return -1;
+    }
+
+    if (this->cryptoContext.rsaInitSignature() < 0)
+    {
+        return -1;
+    }
+
+    if (this->cryptoContext.aesInit() < 0)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *cryptoContext, std::map<std::string, NetworkNode *> *routes)
 {
     NetworkNode *newroute = new NetworkNode;
 
-    newroute->aesctxDuplicate(aesctx);
+    newroute->aesctxDuplicate(cryptoContext->getAES());
 
-    if (mp.handshake(rsactx, newroute->getAesctx()) < 0)
+    if (mp.handshake(cryptoContext->getRSA(), newroute->getAesctx()) < 0)
     {
         return -1;
     }
@@ -96,7 +105,7 @@ int Client::exitSignal(MessageParser &mp, std::map<string, NetworkNode *> *route
     return 0;
 }
 
-int Client::decryptIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, map<string, NetworkNode *> *routes)
+int Client::decryptIncomingMessage(MessageParser &mp, map<string, NetworkNode *> *routes)
 {
     mp.removeId();
     NetworkNode *route = (*routes)[mp.getParsedId()];
@@ -111,11 +120,11 @@ int Client::decryptIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, map<str
     return 0;
 }
 
-int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<string, NetworkNode *> *routes)
+int Client::action(MessageParser &mp, CryptoContext *cryptoContext, map<string, NetworkNode *> *routes)
 {
     if (mp.isHandshake())
     {
-        if (setupSessionFromHandshake(mp, rsactx, routes, aesctx) < 0)
+        if (setupSessionFromIncomingHandshake(mp, cryptoContext, routes) < 0)
         {
             return -1;
         }
@@ -141,16 +150,13 @@ int Client::action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, map<
 
 void *Client::dataListener(void *args)
 {
-    ClientListenerData *clientListenerData = (ClientListenerData *)args;
+    ClientListenerContext *clientListenerData = (ClientListenerContext *)args;
 
     Socket *clientSocket = clientListenerData->clientSocket;
 
     map<string, NetworkNode *> *networkNodes = clientListenerData->networkNodes;
 
-    RSA_CRYPTO rsactx = clientListenerData->rsactx;
-    AES_CRYPTO aesctx = clientListenerData->aesctx;
-
-    string clientAddress = clientListenerData->clientAddress;
+    CryptoContext *cryptoContext = clientListenerData->cryptoContext;
 
     string nextAddress;
 
@@ -162,26 +168,19 @@ void *Client::dataListener(void *args)
     {
         NEWLINE();
 
-        if (action(mp, rsactx, aesctx, networkNodes) == 0)
+        if (action(mp, cryptoContext, networkNodes) == 0)
         {
             mp.clear();
             continue;
         }
 
-        if (decryptIncomingMessage(mp, rsactx, networkNodes) < 0)
+        if (decryptIncomingMessage(mp, networkNodes) < 0)
         {
             mp.clear();
             continue;
         }
 
-        if(mp.getParsedNextAddress() != clientAddress)
-        {
-            WARNING("Incoming message destination don't match local address.");
-        }
-
-        //INFO("Message received; message content: ", mp.getPayload());
-        
-        if(incomingMessageCallback)
+        if (incomingMessageCallback)
         {
             incomingMessageCallback(mp);
         }
@@ -209,7 +208,7 @@ int Client::setupSocket(const std::string &host, const std::string &port)
     return 0;
 }
 
-const string Client::setupDest(const string &keyfile, NetworkNode **route, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
+const string Client::setupNetworkNode(const string &keyfile, NetworkNode **route, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
 {
     PLAINTEXT pubkey = (PLAINTEXT)readFile(keyfile, "rb");
 
@@ -223,38 +222,35 @@ const string Client::setupDest(const string &keyfile, NetworkNode **route, const
         return "";
     }
 
-    NetworkNode *dest_route = new NetworkNode;
+    NetworkNode *newNetworkNode = new NetworkNode;
 
-    if (this->server and dest_route->aesctxDuplicate(this->server) < 0)
+    newNetworkNode->aesctxDuplicate(this->cryptoContext.getAES());
+
+    if (newNetworkNode->rsactxInit(pubkey) < 0)
     {
         return "";
     }
 
-    if (dest_route->rsactxInit(pubkey) < 0)
+    if (newNetworkNode->aesctxInit(key, keylen) < 0)
     {
         return "";
     }
 
-    if (dest_route->aesctxInit(key, keylen) < 0)
-    {
-        return "";
-    }
+    newNetworkNode->setId(id);
 
-    dest_route->setId(id);
+    const CHAR *hexdigest = newNetworkNode->getPubkeyHexDigest();
 
-    const CHAR *hexdigest = dest_route->getPubkeyHexDigest();
-
-    this->networkNodes[hexdigest] = dest_route;
+    this->networkNodes[hexdigest] = newNetworkNode;
 
     if (route)
     {
-        *route = dest_route;
+        *route = newNetworkNode;
     }
 
-    return dest_route->getPubkeyHexDigest();
+    return newNetworkNode->getPubkeyHexDigest();
 }
 
-const string Client::addNode(const std::string &keyfile, const std::string &last_address, bool identify, bool add_keys, bool make_new_session)
+const string Client::addNode(const std::string &keyfile, const std::string &last_address, bool identify, bool make_new_session)
 {
     NetworkNode *last_route = networkNodes[last_address];
 
@@ -268,11 +264,11 @@ const string Client::addNode(const std::string &keyfile, const std::string &last
 
     if (make_new_session)
     {
-        dest_address = this->setupDest(keyfile, &new_route);
+        dest_address = this->setupNetworkNode(keyfile, &new_route);
     }
     else
     {
-        dest_address = this->setupDest(keyfile, &new_route, 0, last_route->getId());
+        dest_address = this->setupNetworkNode(keyfile, &new_route, 0, last_route->getId());
     }
 
     if (not new_route)
@@ -283,7 +279,7 @@ const string Client::addNode(const std::string &keyfile, const std::string &last
     new_route->setPrevious(last_route);
     last_route->setNext(new_route);
 
-    this->handshake(new_route, identify, add_keys);
+    this->handshake(new_route, identify);
 
     return dest_address;
 }
@@ -295,20 +291,19 @@ int Client::createConnection(const string &host, const string &port, const strin
         return -1;
     }
 
-    if(not this->clientSocket->isConnected())
+    if (not this->clientSocket->isConnected())
     {
         ERROR("Could not open connection to ", host, ":", port);
         return -1;
     }
 
-    string serv_address = this->setupDest(keyfile, &this->server);
+    string serv_address = this->setupNetworkNode(keyfile, &this->server);
 
     if (not this->server)
     {
         return -1;
     }
 
-    
     if (this->handshake(this->server) < 0)
     {
         return -1;
@@ -318,13 +313,11 @@ int Client::createConnection(const string &host, const string &port, const strin
 
     if (start_listener)
     {
-        ClientListenerData *clientListenerData = new ClientListenerData;
+        ClientListenerContext *clientListenerData = new ClientListenerContext;
 
         clientListenerData->networkNodes = &this->networkNodes;
         clientListenerData->clientSocket = this->clientSocket;
-        clientListenerData->rsactx = this->rsactx;
-        clientListenerData->aesctx = this->server->getAesctx();
-        clientListenerData->clientAddress = this->hexaddress;
+        clientListenerData->cryptoContext = &this->cryptoContext;
         clientListenerData->incomingMessageCallback = this->incomingMessageCallback;
 
         pthread_t new_thread;
@@ -334,7 +327,7 @@ int Client::createConnection(const string &host, const string &port, const strin
     return 0;
 }
 
-int Client::writeDest(MessageBuilder &mb, NetworkNode *route)
+int Client::writeDataWithEncryption(MessageBuilder &mb, NetworkNode *route)
 {
     NetworkNode *p = route;
 
@@ -362,7 +355,7 @@ int Client::writeDest(MessageBuilder &mb, NetworkNode *route)
     return this->clientSocket->writeData(mb) < 0 ? -1 : 0;
 }
 
-int Client::handshake(NetworkNode *route, bool add_pubkey, bool add_all_keys)
+int Client::handshake(NetworkNode *route, bool add_pubkey)
 {
     if (not route)
     {
@@ -372,16 +365,14 @@ int Client::handshake(NetworkNode *route, bool add_pubkey, bool add_all_keys)
     MessageBuilder mb;
     if (add_pubkey)
     {
-        mb.handshake(route, this->rsactx, this->pubkey, add_all_keys);
+        mb.handshake(route, this->cryptoContext.getRSA(), this->pubkeyPEM);
     }
     else
     {
         mb.handshake(route);
     }
 
-
-
-    return this->writeDest(mb, route) < 0 ? -1 : 0;
+    return this->writeDataWithEncryption(mb, route) < 0 ? -1 : 0;
 }
 
 void Client::cleanupCircuit(NetworkNode *route)
@@ -412,14 +403,14 @@ int Client::exitCircuit(const string &address)
     MessageBuilder mb;
     mb.exitCircuit();
 
-    int result = this->writeDest(mb, route);
+    int result = this->writeDataWithEncryption(mb, route);
 
     this->cleanupCircuit(route);
 
     return result;
 }
 
-int Client::writeData(const BYTE *data, SIZE datalen, const string &address)
+int Client::writeDataWithEncryption(const BYTE *data, SIZE datalen, const string &address)
 {
     MessageBuilder mb(data, datalen);
     NetworkNode *route = this->networkNodes[address];
@@ -429,5 +420,5 @@ int Client::writeData(const BYTE *data, SIZE datalen, const string &address)
         return -1;
     }
 
-    return this->writeDest(mb, route);
+    return this->writeDataWithEncryption(mb, route);
 }

@@ -88,7 +88,7 @@ public:
             return -1;
         }
 
-        return remoteServer->second->writeDataWithNoRouting(mp);
+        return remoteServer->second->writeDataWithoutEncryption(mp.getData(), mp.getDatalen());
     }
 
     /**

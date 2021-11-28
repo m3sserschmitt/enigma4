@@ -1,5 +1,5 @@
-#ifndef _TYPES_HH
-#define _TYPES_HH
+#ifndef CONNECTION_HH
+#define CONNECTION_HH
 
 #include "../networking/socket.hh"
 #include "session.hh"

@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 
         if (k == circuit_length - 1)
         {
-            last_address = client.addNode(entries[k], last_address, 1, 1);
+            last_address = client.addNode(entries[k], last_address, 1);
         }
         else
         {
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
             break;
         }
 
-        client.writeData((BYTES)input.c_str(), input.size(), last_address);
+        client.writeDataWithEncryption((BYTES)input.c_str(), input.size(), last_address);
     }
 
     client.exitCircuit(last_address);

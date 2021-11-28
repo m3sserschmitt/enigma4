@@ -12,54 +12,84 @@
 
 #include "../networking/socket.hh"
 
+#include "crypto_context.hh"
 
 typedef int (*IncomingMessageCallback)(MessageParser &);
 
+typedef std::map<std::string, NetworkNode *> NodesMap;
+
 class Client
 {
-    struct ClientListenerData
+    struct ClientListenerContext
     {
+        // socket to receive data from
         Socket *clientSocket;
 
-        RSA_CRYPTO rsactx;
-        AES_CRYPTO aesctx;
+        // initialized crypto context for cryptographic operations
+        CryptoContext *cryptoContext;
 
-        std::string clientAddress;
+        NodesMap *networkNodes;
 
-        std::map<std::string, NetworkNode *> *networkNodes;
-
+        // function pointer to be called when new message arrives
         IncomingMessageCallback incomingMessageCallback;
     };
 
-    Socket *clientSocket;
-    NetworkNode *server;
-
-    std::map<std::string, NetworkNode *> networkNodes;
-
-    std::string pubkey;
+    std::string pubkeyPEM;
     std::string hexaddress;
 
-    RSA_CRYPTO rsactx;
+    Socket *clientSocket;
+
+    NetworkNode *server;
+
+    NodesMap networkNodes;
+
+    CryptoContext cryptoContext;
 
     IncomingMessageCallback incomingMessageCallback;
 
-    virtual int setupSocket(const std::string &host, const std::string &port);
+    /**
+     * @brief Check if message is an exit signal
+     * 
+     * @param mp Message object to be checked
+     * @param nodes Pointer to nodes map to clean corresponding nodes
+     * @return int 0 if success, -1 of failure
+     */
+    static int exitSignal(MessageParser &mp, NodesMap *nodes);
 
-    const std::string setupDest(const std::string &keyfile, NetworkNode **route, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
+    /**
+     * @brief Check if incoming message is a handshake. If so, get all required data from
+     * handshake message and create a new NetworkNode structure
+     * 
+     * @param mp Message to be cheked
+     * @param cryptoContext Local crypto context used for decryption and verification
+     * @param nodes Nodes map to insert newly created NetworkNode structure
+     * @return int 0 if success, -1 if failure
+     */
+    static int setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *cryptoContext, NodesMap *nodes);
 
-    int handshake(NetworkNode *route, bool add_pubkey = true, bool add_all_keys = false);
+    static int action(MessageParser &mp, CryptoContext *cryptoContext, NodesMap *nodes);
 
-    static int exitSignal(MessageParser &mp, std::map<std::string, NetworkNode *> *routes);
-
-    static int setupSessionFromHandshake(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, NetworkNode *> *routes, AES_CRYPTO aesctx);
-
-    static int action(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, std::map<std::string, NetworkNode *> *routes);
-
-    static int decryptIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, std::map<std::string, NetworkNode *> *routes);
+    /**
+     * @brief Decrypt incoming message
+     * 
+     * @param mp Message object to be decrypted
+     * @param nodes Pointer to nodes map to search for corresponding NetworkNode structure
+     * containing required crypto context for decryption
+     * @return int 0 if success, -1 if failure
+     */
+    static int decryptIncomingMessage(MessageParser &mp, NodesMap *nodes);
 
     static void *dataListener(void *node);
 
-    int writeDest(MessageBuilder &mb, NetworkNode *route);
+    int initCryptoContext(const std::string &privkeyfile);
+
+    virtual int setupSocket(const std::string &host, const std::string &port);
+
+    const std::string setupNetworkNode(const std::string &keyfile, NetworkNode **node, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
+
+    int handshake(NetworkNode *node, bool identify = true);
+
+    int writeDataWithEncryption(MessageBuilder &mb, NetworkNode *route);
 
     void cleanupCircuit(NetworkNode *route);
 
@@ -68,7 +98,7 @@ class Client
     const Client &operator=(const Client &c);
 
 public:
-    Client(const std::string &pubkey, const std::string &privkey);
+    Client(const std::string &pubkeyfile, const std::string &privkeyfile);
     ~Client();
 
     /**
@@ -108,7 +138,7 @@ public:
      * is added into a circuit).
      * @return const std::string Address of newly added node. 
      */
-    const std::string addNode(const std::string &keyfile, const std::string &last_address, bool identify = false, bool add_keys = false, bool make_new_session = false);
+    const std::string addNode(const std::string &keyfile, const std::string &last_address, bool identify = false, bool make_new_session = false);
 
     /**
      * @brief Write data to specified address.
@@ -118,17 +148,17 @@ public:
      * @param address Destination address.
      * @return int 0 if success, -1 if failure.
      */
-    int writeData(const BYTE *data, SIZE datalen, const std::string &address);
+    int writeDataWithEncryption(const BYTE *data, SIZE datalen, const std::string &address);
 
     /**
-     * @brief This method sends data directly to server, no routing applied.
+     * @brief This method sends data directly to server, no encryption layer applied.
      * 
      * @param mp Message object to be sent
      * @return int 0 if success, -1 if failure.
      */
-    int writeDataWithNoRouting(MessageParser &mp)
+    int writeDataWithoutEncryption(const BYTE *data, SIZE datalen)
     {
-        return this->clientSocket->writeData(mp.getData(), mp.getDatalen());
+        return this->clientSocket->writeData(data, datalen);
     }
 
     /**
