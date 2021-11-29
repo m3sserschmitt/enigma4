@@ -1,5 +1,6 @@
 #include "message_builder.hh"
 #include "../onion_routing/route.hh"
+#include "../util/debug.hh"
 
 using namespace std;
 

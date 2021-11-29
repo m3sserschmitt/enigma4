@@ -42,7 +42,7 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
     }
 
     BYTES out = 0;
-    int outlen = CRYPTO::AES_decrypt(ctx, this->getPayload(), this->getPayloadSize(), &out);
+    int outlen = CRYPTO::AES_decrypt(ctx, this->getPayload() + MESSAGE_ID_SIZE, this->getPayloadSize() - MESSAGE_ID_SIZE, &out);
 
     if (outlen < 0)
     {
@@ -50,24 +50,46 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
         return -1;
     }
 
-    this->update(out, outlen);
+    this->parseNextAddress(out);
+    this->reconstructNextMessage(out, outlen);
 
     delete[] out;
+    out = 0;
+
     return 0;
 }
 
-int MessageParser::decrypt(NetworkNode *route)
+int MessageParser::removeEncryptionLayer(NodesMap *nodes)
 {
-    this->removeId();
-    AES_CRYPTO ctx = route->getAES();
+    this->parseSessionID();
+
+    NetworkNode *node = nodes->operator[](getParsedId());
+
+    if(not node)
+    {
+        return -1;
+    }
+
+    AES_CRYPTO ctx = node->getAES();
+
+    if (not ctx)
+    {
+        return -1;
+    }
 
     return this->decrypt(ctx);
 }
 
-int MessageParser::decrypt(Connection *conn)
+int MessageParser::removeEncryptionLayer(Connection *conn)
 {
-    this->removeId();
+    this->parseSessionID();
+
     AES_CRYPTO ctx = conn->getEncryptionContext(this->getParsedId());
+
+    if (not ctx)
+    {
+        return -1;
+    }
 
     return this->decrypt(ctx);
 }
@@ -99,7 +121,7 @@ int MessageParser::handshakeDecryptPubkey(AES_CRYPTO aesctx, RSA_CRYPTO rsactx)
     SIZE encrlen = this->getPayloadSize() - 2 * MESSAGE_ENC_PUBKEY_SIZE - 16;
     int decrlen;
 
-    if ((decrlen = CRYPTO::AES_decrypt(aesctx, this->getPayloadPtr()+ 16 + MESSAGE_ENC_PUBKEY_SIZE, encrlen, &pubkey)) < 0)
+    if ((decrlen = CRYPTO::AES_decrypt(aesctx, this->getPayloadPtr() + 16 + MESSAGE_ENC_PUBKEY_SIZE, encrlen, &pubkey)) < 0)
     {
         delete[] pubkey;
         return -1;
@@ -131,19 +153,14 @@ int MessageParser::messageVerifySignature(RSA_CRYPTO ctx)
         return -1;
     }
 
-    // SIZE payload_size = this->get_payload_size();
-    // this->set_payload_size(payload_size - MESSAGE_ENC_PUBKEY_SIZE);
     BYTES signature_ptr = this->getPayloadPtr() + this->getPayloadSize() - MESSAGE_ENC_PUBKEY_SIZE;
     SIZE datasize = this->getDatalen() - MESSAGE_ENC_PUBKEY_SIZE;
 
     bool authentic;
     if (CRYPTO::RSA_verify(ctx, signature_ptr, MESSAGE_ENC_PUBKEY_SIZE, this->getData(), datasize, authentic) < 0)
     {
-        // this->set_payload_size(payload_size + MESSAGE_ENC_PUBKEY_SIZE);
         return -1;
     }
-
-    // this->set_payload_size(payload_size + MESSAGE_ENC_PUBKEY_SIZE);
 
     return authentic ? 0 : -1;
 }
@@ -154,8 +171,6 @@ int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
     {
         return -1;
     }
-
-    // this->remove_id();
 
     if (this->handshakeDecryptSessionKey(rsactx, aesctx) < 0)
     {
@@ -179,56 +194,41 @@ int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
         CRYPTO::RSA_CRYPTO_free(verify_ctx);
     }
 
+    this->parseSessionID();
+
     return 0;
 }
 
-void MessageParser::removeNext()
-{
-    if (this->parsedNextAddressExists())
-    {
-        return;
-    }
+// void MessageParser::removeNext()
+// {
+//     if (this->parsedNextAddressExists())
+//     {
+//         return;
+//     }
 
-    PLAINTEXT next = 0;
-    CRYPTO::hex(this->getPayloadPtr(), MESSAGE_ADDRESS_SIZE, &next);
+//     PLAINTEXT next = 0;
+//     CRYPTO::hex(this->getPayloadPtr(), MESSAGE_ADDRESS_SIZE, &next);
 
-    this->parseddata["next"] = next;
-    this->removePayloadBeg(MESSAGE_ADDRESS_SIZE);
-    this->setPayloadSize(this->getPayloadSize() - MESSAGE_ADDRESS_SIZE);
+//     this->parseddata["next"] = next;
+//     this->removePayloadBeg(MESSAGE_ADDRESS_SIZE);
+//     this->setPayloadSize(this->getPayloadSize() - MESSAGE_ADDRESS_SIZE);
 
-    delete[] next;
-}
+//     delete[] next;
+// }
 
-void MessageParser::removeId()
-{
-    if (this->parsedIdExists())
-    {
-        return;
-    }
+// void MessageParser::removeId()
+// {
+//     if (this->parsedIdExists())
+//     {
+//         return;
+//     }
 
-    BASE64 id = new CHAR[128];
-    CRYPTO::base64_encode(this->getPayloadPtr(), MESSAGE_ID_SIZE, &id);
+//     BASE64 id = new CHAR[128];
+//     CRYPTO::base64_encode(this->getPayloadPtr(), MESSAGE_ID_SIZE, &id);
 
-    this->parseddata["id"] = id;
-    this->removePayloadBeg(MESSAGE_ID_SIZE);
-    this->setPayloadSize(this->getPayloadSize() - MESSAGE_ID_SIZE);
+//     this->parseddata["id"] = id;
+//     this->removePayloadBeg(MESSAGE_ID_SIZE);
+//     this->setPayloadSize(this->getPayloadSize() - MESSAGE_ID_SIZE);
 
-    delete[] id;
-}
-
-MessageParser &MessageParser::operator=(const MessageParser &mp)
-{
-    if (this != &mp)
-    {
-        this->parseddata = mp.parseddata;
-    }
-
-    Message::operator=(mp);
-
-    return *this;
-}
-
-string &MessageParser::operator[](const string &key)
-{
-    return this->parseddata[toLowercase(key)];
-}
+//     delete[] id;
+// }

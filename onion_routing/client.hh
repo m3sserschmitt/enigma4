@@ -14,9 +14,9 @@
 
 #include "crypto_context.hh"
 
-typedef int (*IncomingMessageCallback)(MessageParser &);
+#include "../types/map_types.hh"
 
-typedef std::map<std::string, NetworkNode *> NodesMap;
+typedef int (*IncomingMessageCallback)(MessageParser &);
 
 class Client
 {

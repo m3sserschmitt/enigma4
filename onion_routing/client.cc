@@ -75,7 +75,8 @@ int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *
         return -1;
     }
 
-    mp.removeId();
+    //mp.removeId();
+    // mp.parseSessionID();
 
     routes->insert(pair<string, NetworkNode *>(mp.getParsedId(), newroute));
 
@@ -84,7 +85,9 @@ int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *
 
 int Client::exitSignal(MessageParser &mp, std::map<string, NetworkNode *> *routes)
 {
-    mp.removeId();
+    //mp.removeId();
+    // mp.parseSessionID();
+
     const string &session_id = mp.getParsedId();
 
     NetworkNode *route = (*routes)[session_id];
@@ -104,17 +107,16 @@ int Client::exitSignal(MessageParser &mp, std::map<string, NetworkNode *> *route
 
 int Client::decryptIncomingMessage(MessageParser &mp, map<string, NetworkNode *> *routes)
 {
-    mp.removeId();
-    NetworkNode *route = (*routes)[mp.getParsedId()];
+    // mp.parseSessionID();
 
-    if ((not route or mp.decrypt(route) < 0))
-    {
-        return -1;
-    }
+    //NetworkNode *route = (*routes)[mp.getParsedId()];
 
-    mp.removeNext();
+    // if ((not route or mp.removeEncryptionLayer(routes) < 0))
+    // {
+    //     return -1;
+    // }
 
-    return 0;
+    return mp.removeEncryptionLayer(routes);
 }
 
 int Client::action(MessageParser &mp, CryptoContext *cryptoContext, map<string, NetworkNode *> *routes)
@@ -167,13 +169,13 @@ void *Client::dataListener(void *args)
 
         if (action(mp, cryptoContext, networkNodes) == 0)
         {
-            mp.clear();
+            mp.reset();
             continue;
         }
 
         if (decryptIncomingMessage(mp, networkNodes) < 0)
         {
-            mp.clear();
+            mp.reset();
             continue;
         }
 
@@ -182,7 +184,7 @@ void *Client::dataListener(void *args)
             incomingMessageCallback(mp);
         }
 
-        mp.clear();
+        mp.reset();
     }
 
     return 0;

@@ -130,7 +130,6 @@ int OnionRoutingApp::tryHandshake(MessageParser &mp, Connection *conn)
 
 int OnionRoutingApp::forwardMessage(MessageParser &mp)
 {
-    mp.removeNext();
     string next_address = mp.getParsedNextAddress();
 
     map<string, Connection *>::iterator next = localConnections.find(next_address);
@@ -153,6 +152,8 @@ int OnionRoutingApp::forwardMessage(MessageParser &mp)
         return 0;
     }
 
+    INFO("Forwarding ", mp.getDatalen(), " bytes to ", next_address);
+
     return next->second->writeData(mp.getData(), mp.getDatalen()) > 0 ? 0 : -1;
 }
 
@@ -163,7 +164,7 @@ int OnionRoutingApp::action(MessageParser &mp, Connection *conn)
         return 0;
     }
 
-    if (mp.decrypt(conn) < 0)
+    if (mp.removeEncryptionLayer(conn) < 0)
     {
         return -1;
     }
@@ -192,7 +193,7 @@ int OnionRoutingApp::redirect(Connection *const conn)
 
         action(mp, conn);
 
-        mp.clear();
+        mp.reset();
     }
 
     return 0;

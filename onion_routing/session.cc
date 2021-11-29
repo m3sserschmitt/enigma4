@@ -18,7 +18,8 @@ int SessionManager::setup(RSA_CRYPTO rsactx, MessageParser &mp)
         return -1;
     }
 
-    mp.removeId();
+    // mp.removeId();
+    // mp.parseSessionID();
 
     this->set(mp.getParsedId(), ctx);
 

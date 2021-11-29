@@ -40,6 +40,11 @@ protected:
         this->datalen = size + MESSAGE_HEADER_SIZE;
     }
 
+    void setDatalen(SIZE datalen)
+    {
+        this->datalen = datalen;
+    }
+
     void increasePayloadSize(SIZE size)
     {
         this->setPayloadSize(this->getPayloadSize() + size);
@@ -117,7 +122,7 @@ public:
     void setPayload(const BYTE *data, SIZE datalen)
     {
         BYTES payload = this->getPayloadPtr();
-        memset(payload, 0, this->getPayloadSize());
+        // memset(payload, 0, this->getPayloadSize());
         memcpy(payload, data, datalen);
         this->setPayloadSize(datalen);
     }
@@ -152,7 +157,7 @@ public:
         return this->datalen;
     };
 
-    void clear()
+    void reset()
     {
         memset(this->data, 0, MESSAGE_MAX_SIZE);
         datalen = 0;
