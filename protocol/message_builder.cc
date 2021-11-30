@@ -37,46 +37,39 @@ int MessageBuilder::encrypt(NetworkNode *route)
 
 int MessageBuilder::handshakeSetupSessionKey(NetworkNode *route)
 {
-    BYTES keys = new BYTE[32 * 10];
-    BYTES encrkeys = 0;
+    BYTES sessionIdAndKey = new BYTE[SESSION_ID_SIZE + SESSION_KEY_SIZE + 1];
+    BYTES ptr = sessionIdAndKey;
+
+    BYTES encr = 0;
     int encrlen;
 
     int ret = 0;
 
-    BYTES keys_ptr = keys;
+    // first 16 bytes represent session ID;
+    memcpy(ptr, route->getId(), SESSION_ID_SIZE);
+    ptr += SESSION_ID_SIZE;
 
-    // if (add_all_keys)
-    // {    
-    //     for (NetworkNode *p = route; p; p = p->getPrevious(), keys_ptr += 32)
-    //     {
-    //         if (CRYPTO::AES_read_key(route->getAesctx(), 32, &keys_ptr) < 0)
-    //         {
-    //             ret = -1;
-    //             goto endfunc;
-    //         }
-    //     }
-    // }
-    // else
-    //{
-        if (CRYPTO::AES_read_key(route->getAES(), 32, &keys_ptr) < 0)
-        {
-            ret = -1;
-            goto endfunc;
-        }
-    //}
-
-    if ((encrlen = CRYPTO::RSA_encrypt(route->getRSA(), keys, (int)(keys_ptr - keys) + 32, &encrkeys)) < 0)
+    // last 32 bytes represent session key;
+    if (CRYPTO::AES_read_key(route->getAES(), SESSION_KEY_SIZE, &ptr) < 0)
     {
         ret = -1;
-        goto endfunc;
+        goto cleanup;
     }
 
-    this->appendPayloadEnd(route->getId(), 16);
-    this->appendPayloadEnd(encrkeys, encrlen);
+    if ((encrlen = CRYPTO::RSA_encrypt(route->getRSA(), sessionIdAndKey, SESSION_KEY_SIZE + SESSION_ID_SIZE, &encr)) < 0)
+    {
+        ret = -1;
+        goto cleanup;
+    }
 
-endfunc:
-    delete[] keys;
-    delete[] encrkeys;
+    this->appendPayloadEnd(encr, encrlen);
+
+cleanup:
+    delete[] sessionIdAndKey;
+    delete[] encr;
+
+    sessionIdAndKey = 0;
+    encr = 0;
 
     return ret;
 }

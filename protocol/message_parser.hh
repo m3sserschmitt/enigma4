@@ -78,8 +78,8 @@ class MessageParser : public Message
             return;
         }
 
-        BASE64 id = new CHAR[128];
-        CRYPTO::base64_encode(this->getPayloadPtr(), MESSAGE_ID_SIZE, &id);
+        BASE64 id = new CHAR[ENCODED_SESSION_ID_SIZE + 1];
+        CRYPTO::base64_encode(this->getPayloadPtr(), SESSION_ID_SIZE, &id);
 
         this->parseddata["id"] = id;
     }

@@ -56,7 +56,7 @@ public:
     {
         if (id)
         {
-            this->appendPayloadBeg(id, MESSAGE_ID_SIZE);
+            this->appendPayloadBeg(id, SESSION_ID_SIZE);
         }
     }
 
