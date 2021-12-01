@@ -44,7 +44,7 @@ int TLSSocket::sslWrapFd()
 ssize_t TLSSocket::readData()
 {
     SIZE delta = this->getDelta();
-    BYTES buffer = this->getBuffer();
+    BYTES buffer = this->getBufferPtr();
 
     return SSL_read(this->ssl, buffer + (delta > 0 ? delta : 0), Socket::getMaxSocketBuffRead());
 }

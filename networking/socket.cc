@@ -66,7 +66,7 @@ ssize_t Socket::readLocalBuffer(MessageParser &mp)
 
     if (this->getDelta() > 0)
     {
-        bytes_read = mp.update(this->buffer, this->getDelta());
+        bytes_read = mp.update(this->extraBytesBuffer, this->getDelta());
         this->decreaseDelta(bytes_read);
     }
 
@@ -75,7 +75,7 @@ ssize_t Socket::readLocalBuffer(MessageParser &mp)
 
 ssize_t Socket::readNetworkData(MessageParser &mp)
 {
-    ssize_t bytes_read = read(this->fd, this->buffer, SOCKET_MAX_BUFFER_SIZE);
+    ssize_t bytes_read = read(this->fd, this->extraBytesBuffer, SOCKET_MAX_BUFFER_SIZE);
 
     if (not bytes_read)
     {
@@ -92,11 +92,11 @@ ssize_t Socket::readNetworkData(MessageParser &mp)
 
     if (not mp.getPayloadSize())
     {
-        parsed = mp.update(this->buffer, bytes_read);
+        parsed = mp.update(this->extraBytesBuffer, bytes_read);
     }
     else
     {
-        parsed = mp.appendPayload(this->buffer, bytes_read);
+        parsed = mp.appendPayload(this->extraBytesBuffer, bytes_read);
     }
 
     int currentDelta = bytes_read - parsed;

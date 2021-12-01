@@ -13,12 +13,30 @@ class Socket
     static const SIZE SOCKET_MAX_BUFFER_SIZE = 512;
     static const SIZE MAX_FAILED_READ_ATTEMPTS = 128;
 
+    // file descriptor used to read and write data
     int fd;
-    BYTES buffer;
+
+    // buffer used to store extra bytes when more data read than required
+    BYTES extraBytesBuffer;
+
+    // size of extraBytesBuffer in bytes
     int delta;
 
+    /**
+     * @brief When more data than required are read from socket, they are storead into local buffer
+     * and this method is called to recover those extra bytes of data from previous read operation
+     * 
+     * @param mp Message object to store read byte from local buffer
+     * @return ssize_t number of bytes read from local buffer
+     */
     ssize_t readLocalBuffer(MessageParser &mp);
 
+    /**
+     * @brief Read socket data
+     * 
+     * @param mp Message object to store bytes read from socket
+     * @return ssize_t number of byte read
+     */
     virtual ssize_t readNetworkData(MessageParser &mp);
 
     Socket(const Socket &);
@@ -26,7 +44,7 @@ class Socket
     const Socket &operator=(const Socket &s);
 
 protected:
-    BYTES getBuffer() { return this->buffer; };
+    BYTES getBufferPtr() { return this->extraBytesBuffer; };
 
     void setDelta(int delta) { this->delta = delta; }
 
@@ -44,31 +62,18 @@ protected:
 
     void rebaseData(SIZE count)
     {
-        memcpy(this->buffer, this->buffer + count, SOCKET_MAX_BUFFER_SIZE - count);
+        memcpy(this->extraBytesBuffer, this->extraBytesBuffer + count, SOCKET_MAX_BUFFER_SIZE - count);
     }
 
 public:
     Socket() : fd(-1),
-               buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
+               extraBytesBuffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
                delta(0){};
-
-    // Socket(int fd) : fd(fd),
-    //                  buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
-    //                  delta(0){};
-                     
-    // Socket(const std::string &host, const std::string port) : fd(-1),
-    //                                                           buffer(new BYTE[SOCKET_MAX_BUFFER_SIZE]),
-    //                                                           delta(0),
-    //                                                           host(host),
-    //                                                           port(port)
-    // {
-    //     // this->createConnection(host, port);
-    // };
 
     virtual ~Socket()
     {
-        delete[] buffer;
-        buffer = 0;
+        delete[] extraBytesBuffer;
+        extraBytesBuffer = 0;
     }
 
     virtual int createConnection(const std::string &host, const std::string &port);
