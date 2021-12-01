@@ -11,6 +11,7 @@
 class Socket
 {
     static const SIZE SOCKET_MAX_BUFFER_SIZE = 512;
+    static const SIZE MAX_FAILED_READ_ATTEMPTS = 128;
 
     int fd;
     BYTES buffer;
@@ -18,47 +19,7 @@ class Socket
 
     ssize_t readLocalBuffer(MessageParser &mp);
 
-    virtual ssize_t readData(MessageParser &mp)
-    {
-        ssize_t bytes_read = read(this->fd, this->buffer, SOCKET_MAX_BUFFER_SIZE);
-
-        if(bytes_read < 0)
-        {
-            printErrorDetails();
-
-            //INFO("Socket: ", this->fd);
-
-            return -1;
-        }
-
-        if (not bytes_read)
-        {
-            return 0;
-        }
-
-        SIZE parsed;
-
-        if (not mp.getPayloadSize())
-        {
-            parsed = mp.update(this->buffer, bytes_read);
-        }
-        else
-        {
-            parsed = mp.appendPayload(this->buffer, bytes_read);
-        }
-
-        int currentDelta = bytes_read - parsed;
-
-        this->increaseDelta(std::min(0, currentDelta));
-
-        if(currentDelta)
-        {
-            this->rebaseData(parsed);
-        }
-        
-
-        return parsed;
-    }
+    virtual ssize_t readNetworkData(MessageParser &mp);
 
     Socket(const Socket &);
 
@@ -128,7 +89,7 @@ public:
 
     virtual ssize_t writeData(const BYTE *data, SIZE datalen) const;
 
-    ssize_t readNetworkData(MessageParser &mp);
+    ssize_t readData(MessageParser &mp);
 
     virtual const CHAR *getCipher() const { return "(NONE)"; }
 

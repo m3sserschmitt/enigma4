@@ -140,7 +140,7 @@ void *Client::dataListener(void *args)
 
     IncomingMessageCallback incomingMessageCallback = clientListenerData->incomingMessageCallback;
 
-    while (clientSocket->readNetworkData(mp) > 0)
+    while (clientSocket->readData(mp) > 0)
     {
         NEWLINE();
 

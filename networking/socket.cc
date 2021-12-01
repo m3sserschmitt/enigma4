@@ -75,19 +75,65 @@ ssize_t Socket::readLocalBuffer(MessageParser &mp)
 
 ssize_t Socket::readNetworkData(MessageParser &mp)
 {
-    // if more data read previously, then read data from local buffer
+    ssize_t bytes_read = read(this->fd, this->buffer, SOCKET_MAX_BUFFER_SIZE);
+
+    if (not bytes_read)
+    {
+        return 0;
+    }
+
+    if (bytes_read < 0)
+    {
+        printErrorDetails();
+        return -1;
+    }
+
+    SIZE parsed;
+
+    if (not mp.getPayloadSize())
+    {
+        parsed = mp.update(this->buffer, bytes_read);
+    }
+    else
+    {
+        parsed = mp.appendPayload(this->buffer, bytes_read);
+    }
+
+    int currentDelta = bytes_read - parsed;
+
+    this->increaseDelta(std::min(0, currentDelta));
+
+    if (currentDelta)
+    {
+        this->rebaseData(parsed);
+    }
+
+    return parsed;
+}
+
+ssize_t Socket::readData(MessageParser &mp)
+{
+    // if more data read previously, read data from local buffer
     this->readLocalBuffer(mp);
 
-    while(not mp.isComplete())
+    int ret;
+    SIZE failedAttempts = 0;
+
+    // then read socket until message in complete
+    while (not mp.isComplete())
     {
-        //INFO("Reading data");
-        if(this->readData(mp) < 0)
+        if ((ret = this->readNetworkData(mp)) < 0)
+        {
+            return -1;
+        }
+    
+        not ret and failedAttempts ++;
+
+        if (failedAttempts >= MAX_FAILED_READ_ATTEMPTS)
         {
             return -1;
         }
     }
-
-    // INFO("message size: ", mp.get_datalen());
 
     return mp.getPayloadSize();
 }
