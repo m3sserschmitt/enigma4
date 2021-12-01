@@ -7,15 +7,18 @@
 
 using namespace std;
 
+Client::Client()
+{
+    this->server = 0;
+    this->clientSocket = new Socket();
+}
+
 Client::Client(const string &pubkeyfile, const string &privkeyfile)
 {
-    this->pubkeyPEM = (PLAINTEXT)readFile(pubkeyfile, "rb");
-
     this->server = 0;
     this->clientSocket = new Socket();
 
-    KEY_UTIL::getKeyHexDigest(this->pubkeyPEM, this->hexaddress);
-
+    this->setClientPublicKey(pubkeyfile);
     this->initCryptoContext(privkeyfile);
 }
 
@@ -29,6 +32,7 @@ Client::~Client()
         if (it->second != this->server)
         {
             delete it->second;
+            it->second = 0;
         }
     }
 
@@ -41,17 +45,7 @@ Client::~Client()
 
 int Client::initCryptoContext(const string &privkeyfile)
 {
-    if (this->cryptoContext.rsaInitPrivkeyFile(privkeyfile) < 0)
-    {
-        return -1;
-    }
-
-    if (this->cryptoContext.rsaInitDecryption() < 0)
-    {
-        return -1;
-    }
-
-    if (this->cryptoContext.rsaInitSignature() < 0)
+    if(this->setClientPrivateKey(privkeyfile) < 0)
     {
         return -1;
     }
@@ -64,30 +58,27 @@ int Client::initCryptoContext(const string &privkeyfile)
     return 0;
 }
 
-int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *cryptoContext, std::map<std::string, NetworkNode *> *routes)
+int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *cryptoContext, NodesMap *routes)
 {
-    NetworkNode *newroute = new NetworkNode;
+    NetworkNode *newNode = new NetworkNode;
 
-    newroute->aesctxDuplicate(cryptoContext);
+    newNode->aesctxDuplicate(cryptoContext);
 
-    if (mp.handshake(cryptoContext->getRSA(), newroute->getAES()) < 0)
+    if (mp.handshake(cryptoContext->getRSA(), newNode->getAES()) < 0)
     {
+        delete newNode;
+        newNode = 0;
+
         return -1;
     }
 
-    //mp.removeId();
-    // mp.parseSessionID();
-
-    routes->insert(pair<string, NetworkNode *>(mp.getParsedId(), newroute));
+    routes->insert(pair<string, NetworkNode *>(mp.getParsedId(), newNode));
 
     return 0;
 }
 
 int Client::exitSignal(MessageParser &mp, std::map<string, NetworkNode *> *routes)
 {
-    //mp.removeId();
-    // mp.parseSessionID();
-
     const string &session_id = mp.getParsedId();
 
     NetworkNode *route = (*routes)[session_id];
@@ -105,21 +96,7 @@ int Client::exitSignal(MessageParser &mp, std::map<string, NetworkNode *> *route
     return 0;
 }
 
-int Client::decryptIncomingMessage(MessageParser &mp, map<string, NetworkNode *> *routes)
-{
-    // mp.parseSessionID();
-
-    //NetworkNode *route = (*routes)[mp.getParsedId()];
-
-    // if ((not route or mp.removeEncryptionLayer(routes) < 0))
-    // {
-    //     return -1;
-    // }
-
-    return mp.removeEncryptionLayer(routes);
-}
-
-int Client::action(MessageParser &mp, CryptoContext *cryptoContext, map<string, NetworkNode *> *routes)
+int Client::action(MessageParser &mp, CryptoContext *cryptoContext, NodesMap *routes)
 {
     if (mp.isHandshake())
     {
@@ -278,7 +255,7 @@ const string Client::addNode(const std::string &keyfile, const std::string &last
     new_route->setPrevious(last_route);
     last_route->setNext(new_route);
 
-    this->handshake(new_route, identify);
+    this->performHandshake(new_route, identify);
 
     return dest_address;
 }
@@ -303,12 +280,10 @@ int Client::createConnection(const string &host, const string &port, const strin
         return -1;
     }
 
-    if (this->handshake(this->server) < 0)
+    if (this->performHandshake(this->server) < 0)
     {
         return -1;
     }
-
-    //INFO("HANDSHAKE SENT");
 
     if (start_listener)
     {
@@ -332,7 +307,6 @@ int Client::writeDataWithEncryption(MessageBuilder &mb, NetworkNode *route)
 
     if (mb.isHandshake())
     {
-        // mb.set_id(p->get_id());
         p = p->getPrevious();
     }
 
@@ -354,7 +328,7 @@ int Client::writeDataWithEncryption(MessageBuilder &mb, NetworkNode *route)
     return this->clientSocket->writeData(mb) < 0 ? -1 : 0;
 }
 
-int Client::handshake(NetworkNode *route, bool add_pubkey)
+int Client::performHandshake(NetworkNode *route, bool add_pubkey)
 {
     if (not route)
     {
@@ -407,17 +381,4 @@ int Client::exitCircuit(const string &address)
     this->cleanupCircuit(route);
 
     return result;
-}
-
-int Client::writeDataWithEncryption(const BYTE *data, SIZE datalen, const string &address)
-{
-    MessageBuilder mb(data, datalen);
-    NetworkNode *route = this->networkNodes[address];
-
-    if (not route)
-    {
-        return -1;
-    }
-
-    return this->writeDataWithEncryption(mb, route);
 }
