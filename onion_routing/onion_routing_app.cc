@@ -172,7 +172,7 @@ int OnionRoutingApp::action(MessageParser &mp, Connection *conn)
     string session_id = mp.getParsedId();
     // INFO("Message decrypted successfully; Session ID: ", session_id);
 
-    if (mp.isExit())
+    if (mp.isExitSignal())
     {
         INFO("EXIT received for session ID: ", session_id);
         conn->cleanupSession(session_id);

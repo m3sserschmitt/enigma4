@@ -103,7 +103,7 @@ int main(int argc, char **argv)
         client.writeDataWithEncryption((BYTES)input.c_str(), input.size(), last_address);
     }
 
-    client.exitCircuit(last_address);
+    client.sendExitSignal(last_address);
 
     return 0;
 }

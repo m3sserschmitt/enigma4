@@ -24,14 +24,15 @@ enum MessageConst
     MESSAGE_PAYLOAD_OFFSET = MESSAGE_HEADER_OFFSET + MESSAGE_HEADER_SIZE
 };
 
-enum MessageTypes
+enum MessageType
 {
-    MESSAGE_HANDSHAKE = 0x00,
-    MESSAGE_ENC_NONE = 0x01,
-    MESSAGE_ENC_AES = 0x02,
-    MESSAGE_ENC_RSA = 0x03,
-    MESSAGE_EXIT = 0x04
-    
+    MESSAGE_NULL_TYPE       = 0b00000000,
+    MESSAGE_HANDSHAKE       = 0b00000001,
+
+    MESSAGE_ENC_AES         = 0b00000010,
+    MESSAGE_ENC_RSA         = 0b00000100,
+
+    MESSAGE_EXIT            = 0b00001000
 };
 
 #endif

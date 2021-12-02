@@ -64,8 +64,6 @@ public:
 
     // int handshake(AES_CRYPTO aesctx, RSA_CRYPTO encrrsactx, RSA_CRYPTO signrsactx = 0, const std::string &pubkeypem = "");
     int handshake(NetworkNode *route, RSA_CRYPTO signrsactx = 0, const std::string &pubkeypem = "");
-    
-    void exitCircuit() { this->setMessageType(MESSAGE_EXIT); };
 
     MessageBuilder &operator=(const MessageBuilder &mb);
 };

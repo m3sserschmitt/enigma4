@@ -36,7 +36,9 @@ void MessageParser::parse(const CHAR *data)
 
 int MessageParser::decrypt(AES_CRYPTO ctx)
 {
-    if (not this->isExit() and this->getMessageType() != MESSAGE_ENC_AES)
+    const int acceptedMessageTypes = MESSAGE_ENC_AES | MESSAGE_EXIT;
+
+    if (not this->hasMessageType(acceptedMessageTypes))
     {
         return -1;
     }

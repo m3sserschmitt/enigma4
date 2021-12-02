@@ -12,7 +12,6 @@ class Message
     SIZE datalen;
 
 protected:
-    
     BYTES getDataPtr()
     {
         return this->data;
@@ -27,7 +26,7 @@ protected:
     {
         return this->data + MESSAGE_SIZE_SECTION_OFFSET;
     }
-    
+
     BYTES getPayloadPtr() const
     {
         return this->data + MESSAGE_PAYLOAD_OFFSET;
@@ -60,11 +59,6 @@ protected:
         this->datalen += size;
     }
 
-    void setMessageType(int algorithm)
-    {
-        *(this->data + MESSAGE_ENC_ALGORITHM_OFFSET) = algorithm;
-    }
-
     void update(const BYTE *data, SIZE datalen)
     {
         memset(this->data, 0, MESSAGE_MAX_SIZE);
@@ -74,25 +68,32 @@ protected:
     }
 
 public:
-    Message() : data(new BYTE[MESSAGE_MAX_SIZE]), datalen(MESSAGE_HEADER_SIZE) {}
-    
+    Message() : data(new BYTE[MESSAGE_MAX_SIZE]), datalen(MESSAGE_HEADER_SIZE)
+    {
+        memset(this->data, 0, MESSAGE_MAX_SIZE);
+    }
+
     Message(const CHAR *data) : data(new BYTE[MESSAGE_MAX_SIZE])
     {
+        memset(this->data, 0, MESSAGE_MAX_SIZE);
         this->setPayload(data);
     }
 
     Message(const BYTE *data, SIZE datalen) : data(new BYTE[MESSAGE_MAX_SIZE]), datalen(MESSAGE_HEADER_SIZE)
     {
+        memset(this->data, 0, MESSAGE_MAX_SIZE);
         this->setPayload(data, datalen);
     }
 
     Message(const std::string &data) : data(new BYTE[MESSAGE_MAX_SIZE]), datalen(MESSAGE_HEADER_SIZE)
     {
+        memset(this->data, 0, MESSAGE_MAX_SIZE);
         this->setPayload(data);
     }
-    
+
     Message(const Message &mb) : data(new BYTE[MESSAGE_MAX_SIZE])
     {
+        memset(this->data, 0, MESSAGE_MAX_SIZE);
         this->update(mb.data, mb.datalen);
     }
 
@@ -122,7 +123,6 @@ public:
     void setPayload(const BYTE *data, SIZE datalen)
     {
         BYTES payload = this->getPayloadPtr();
-        // memset(payload, 0, this->getPayloadSize());
         memcpy(payload, data, datalen);
         this->setPayloadSize(datalen);
     }
@@ -137,9 +137,73 @@ public:
         this->setPayload(data.c_str());
     }
 
-    bool isHandshake() const { return this->getMessageType() == MESSAGE_HANDSHAKE; }
+    bool isHandshake() const { return this->hasMessageType(MESSAGE_HANDSHAKE); }
 
-    bool isExit() const { return this->getMessageType() == MESSAGE_EXIT; }
+    /**
+     * @brief Set the Message Type. It overrides the byte representing message type with
+     * value provided into messageType parameter.
+     * 
+     * @param messageType Message type to be set
+     */
+    void setMessageType(int messageType)
+    {
+        BYTES messageTypePtr = this->getMessageTypePtr();
+        (*messageTypePtr) = messageType;
+    }
+
+    /**
+     * @brief Add message type. Previous value is not overriden, istead it uses "|" (or) bitwise operator to add
+     * new type.
+     * 
+     * @param messageType Message type to be added 
+     */
+    void addMessageType(int messageType)
+    {
+        BYTES messageTypePtr = this->getMessageTypePtr();
+        (*messageTypePtr) |= messageType;
+    }
+
+    /**
+     * @brief Check if message has specified type.
+     * 
+     * @param messageType Message type to be checked
+     * @return true If message has specified type.
+     * @return false If message does not have specified type
+     */
+    bool hasMessageType(int messageType) const
+    {
+        BYTES messageTypePtr = this->getMessageTypePtr();
+        return ((*messageTypePtr) & messageType) != 0;
+    }
+
+    /**
+     * @brief Check if message has type passed into checkType parameter. If specified type is present, then newType is added,
+     * otherwise message type byte is overriden with newType
+     * 
+     * @param checkType Type to be checked
+     * @param newType New type to be added / set.
+     */
+    void addIfPressentOrOverrideMessageType(int checkType, int newType)
+    {
+        if (this->hasMessageType(checkType))
+        {
+            this->addMessageType(newType);
+        }
+        else
+        {
+            this->setMessageType(newType);
+        }
+    }
+
+    void makeExitSignal()
+    {
+        this->setMessageType(MESSAGE_EXIT);
+    };
+
+    bool isExitSignal() const
+    {
+        return this->hasMessageType(MESSAGE_EXIT);
+    }
 
     const BYTE *getData(SIZE &datalen) const
     {

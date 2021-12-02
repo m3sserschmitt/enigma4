@@ -52,7 +52,7 @@ class Client
      * 
      * @param mp Message object to be checked
      * @param nodes Pointer to nodes map to clean corresponding nodes
-     * @return int 0 if success, -1 of failure
+     * @return int 0 if success, -1 of failure, 1 if message is not an exit signal
      */
     static int exitSignal(MessageParser &mp, NodesMap *nodes);
 
@@ -63,11 +63,20 @@ class Client
      * @param mp Message to be cheked
      * @param localCryptoContext Local crypto context used for decryption and verification
      * @param nodes Nodes map to insert newly created NetworkNode structure
-     * @return int 0 if success, -1 if failure
+     * @return int 0 if success, -1 if failure, 1 if message is not handshake
      */
     static int setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *localCryptoContext, NodesMap *nodes);
 
-    static int action(MessageParser &mp, CryptoContext *localCryptoContext, NodesMap *nodes);
+    /**
+     * @brief Process incoming message: try handshake, AES decryption and check for exit signal
+     * 
+     * @param mp Message to be processed
+     * @param localCryptoContext Local crypto context required for RSA decryption in case of handshake message
+     * @param nodes Nodes map used to lookup for session ID in case of AES decryption and/or exit signal
+     * @return int 0 if no further actions required, -1 if errors encountered, 1 if message needs 
+     * further actions (i.e forwarding)
+     */
+    static int processIncomingMessage(MessageParser &mp, CryptoContext *localCryptoContext, NodesMap *nodes);
 
     /**
      * @brief Decrypt incoming message
@@ -75,10 +84,15 @@ class Client
      * @param mp Message object to be decrypted
      * @param nodes Pointer to nodes map to search for corresponding NetworkNode structure
      * containing required crypto context for decryption
-     * @return int 0 if success, -1 if failure
+     * @return int 0 if success, -1 if failure, 1 if message is not AES encrypted
      */
     static int decryptIncomingMessage(MessageParser &mp, NodesMap *nodes)
     {
+        if(not mp.hasMessageType(MESSAGE_ENC_AES))
+        {
+            return 1;
+        }
+
         return mp.removeEncryptionLayer(nodes);
     }
 
@@ -303,7 +317,7 @@ public:
      * @param address Destination address (typically last address in circuit).
      * @return int 0 if success, -1 if failure.
      */
-    int exitCircuit(const std::string &address);
+    int sendExitSignal(const std::string &destinationAddress);
 
     Socket *getSocket() { return this->clientSocket; }
 

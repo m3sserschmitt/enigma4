@@ -45,7 +45,7 @@ Client::~Client()
 
 int Client::initCryptoContext(const string &privkeyfile)
 {
-    if(this->setClientPrivateKey(privkeyfile) < 0)
+    if (this->setClientPrivateKey(privkeyfile) < 0)
     {
         return -1;
     }
@@ -60,6 +60,11 @@ int Client::initCryptoContext(const string &privkeyfile)
 
 int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *cryptoContext, NodesMap *routes)
 {
+    if (not mp.isHandshake())
+    {
+        return 1;
+    }
+
     NetworkNode *newNode = new NetworkNode;
 
     newNode->aesctxDuplicate(cryptoContext);
@@ -74,11 +79,18 @@ int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *
 
     routes->insert(pair<string, NetworkNode *>(mp.getParsedId(), newNode));
 
+    INFO("Handshake completed for session ID: ", mp.getParsedId());
+
     return 0;
 }
 
 int Client::exitSignal(MessageParser &mp, std::map<string, NetworkNode *> *routes)
 {
+    if (not mp.isExitSignal())
+    {
+        return 1;
+    }
+
     const string &session_id = mp.getParsedId();
 
     NetworkNode *route = (*routes)[session_id];
@@ -93,34 +105,43 @@ int Client::exitSignal(MessageParser &mp, std::map<string, NetworkNode *> *route
 
     routes->erase(session_id);
 
+    INFO("Session with ID ", mp.getParsedId(), " erased.");
+
     return 0;
 }
 
-int Client::action(MessageParser &mp, CryptoContext *cryptoContext, NodesMap *routes)
+int Client::processIncomingMessage(MessageParser &mp, CryptoContext *cryptoContext, NodesMap *networkNodes)
 {
-    if (mp.isHandshake())
+    int ret;
+
+    if ((ret = setupSessionFromIncomingHandshake(mp, cryptoContext, networkNodes)) < 0)
     {
-        if (setupSessionFromIncomingHandshake(mp, cryptoContext, routes) < 0)
-        {
-            return -1;
-        }
-
-        INFO("Handshake completed for session ID: ", mp.getParsedId());
-
-        return 0;
+        return -1;
     }
-    else if (mp.isExit())
+
+    if(ret == 0)
     {
-        if (exitSignal(mp, routes) < 0)
-        {
-            return -1;
-        }
-
-        INFO("Session with ID ", mp.getParsedId(), " erased.");
-
+        // handshake successfull, no further actions required
         return 0;
     }
 
+    if ((ret = decryptIncomingMessage(mp, networkNodes)) < 0)
+    {
+        return -1;
+    }
+
+    if(ret == 1)
+    {
+        // if message cannot be decrypted with AES, then no further actions required
+        return 0;
+    }
+
+    if (exitSignal(mp, networkNodes) < 0)
+    {
+        return -1;
+    }
+
+    // otherwise, further actions required in order to complete client request
     return 1;
 }
 
@@ -144,23 +165,15 @@ void *Client::dataListener(void *args)
     {
         NEWLINE();
 
-        if (action(mp, cryptoContext, networkNodes) == 0)
+        if(processIncomingMessage(mp, cryptoContext, networkNodes) <= 0)
         {
+            // if errors were encountered or no further actions required, reset mp and read new message
             mp.reset();
             continue;
         }
 
-        if (decryptIncomingMessage(mp, networkNodes) < 0)
-        {
-            mp.reset();
-            continue;
-        }
-
-        if (incomingMessageCallback)
-        {
-            incomingMessageCallback(mp);
-        }
-
+        incomingMessageCallback and incomingMessageCallback(mp);
+        
         mp.reset();
     }
 
@@ -364,7 +377,7 @@ void Client::cleanupCircuit(NetworkNode *route)
     }
 }
 
-int Client::exitCircuit(const string &address)
+int Client::sendExitSignal(const string &address)
 {
     NetworkNode *route = this->networkNodes[address];
 
@@ -374,7 +387,7 @@ int Client::exitCircuit(const string &address)
     }
 
     MessageBuilder mb;
-    mb.exitCircuit();
+    mb.makeExitSignal();
 
     int result = this->writeDataWithEncryption(mb, route);
 
