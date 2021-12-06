@@ -2,6 +2,7 @@
 #define SERVER_H
 
 #include "../onion_routing/app.h"
+#include "../networking/tls_socket_server.hh"
 
 #include <netdb.h>
 #include <string>
@@ -20,6 +21,14 @@ class Server
 
     const Server &operator=(const Server &);
     Server(const Server &);
+
+    virtual Socket *makeSocket(int clientSocketFd)
+    {
+        Socket *sock = new Socket();
+        sock->wrap(clientSocketFd);
+
+        return sock;
+    }
 
 public:
     Server() : host("localhost"), port("8080"), backlog(128)
@@ -79,6 +88,8 @@ public:
         return this->addrInfo;
     }
 
+    int getServerFd() const { return this->servsock; }
+
     int getBacklog() const
     {
         return this->backlog;
@@ -92,6 +103,18 @@ public:
     int socketBind();
 
     int unixSocketBind();
+
+    virtual Socket *acceptClient()
+    {
+        int clientSocket = accept(this->servsock, 0, 0);
+
+        if (clientSocket < 0)
+        {
+            return 0;
+        }
+
+        return this->makeSocket(clientSocket);
+    }
 
     int acceptClients();
 };

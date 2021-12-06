@@ -218,12 +218,12 @@ void *OnionRoutingApp::newThread(void *args)
     return 0;
 }
 
-int OnionRoutingApp::handleClient(int clientsock)
+int OnionRoutingApp::handleClient(Socket *sock)
 {
     pthread_t thread;
 
-    Socket *sock = new Socket();
-    sock->wrap(clientsock);
+    // Socket *sock = new Socket();
+    // sock->wrap(clientsock);
 
     // INFO("Client socket: ", clientsock, "  ", sock->getFd());
 

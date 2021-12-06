@@ -5,61 +5,62 @@
 
 #include <openssl/ssl.h>
 
-class TLSSocket : public Socket
+class TlsSocket : public Socket
 {
-    SSL_CTX *ctx;
+    ssize_t readSocket(int fd, size_t nbytes)
+    {
+        return SSL_read(this->ssl, this->getBufferPtr(), nbytes);
+    }
+
+    TlsSocket(const TlsSocket &s);
+
+    const TlsSocket &operator=(const TlsSocket &);
+
+protected:
     SSL *ssl;
-
-    int sslInit();
-
-    int sslWrapFd();
-
-    ssize_t readData();
-
-    TLSSocket(const TLSSocket &s);
-
-    const TLSSocket &operator=(const TLSSocket &);
+    SSL_CTX *sslContext;
 
 public:
-    TLSSocket() : Socket() { this->sslInit(); };
-
-    // TLSSocket(int fd) : Socket(fd)
-    // {
-    //     this->sslInit();
-    //     this->sslWrapFd();
-    // }
-    
-    // TLSSocket(const std::string host, const std::string &port) : Socket(host, port)
-    // {
-    //     this->sslInit();
-    //     this->sslWrapFd();
-    // }
-
-    ~TLSSocket()
+    TlsSocket() : Socket()
     {
-        SSL_CTX_free(ctx);
-        SSL_free(ssl);
+        this->ssl = 0;
+        this->sslContext = 0;
     }
 
-    int createConnection(const std::string &host, const std::string &port)
-    {
-        if (Socket::createConnection(host, port) < 0)
-        {
-            return -1;
-        }
+    virtual ~TlsSocket() = 0;
 
-        return this->sslWrapFd();
-    }
-    
-    void wrap(int fd)
+    int wrap(int fd)
     {
         Socket::wrap(fd);
-        this->sslWrapFd();
-    };
 
-    ssize_t writeData(const MessageBuilder &mb) const;
-    
-    ssize_t writeData(const BYTE *data, SIZE datalen) const;
+        return SSL_set_fd(this->ssl, this->getFd()) ? 0 : -1;
+    }
+
+    ssize_t writeData(const MessageBuilder &mb) const
+    {
+        return SSL_write(this->ssl, mb.getData(), mb.getDatalen());
+    }
+
+    ssize_t writeData(const BYTE *data, SIZE datalen) const
+    {
+        return SSL_write(this->ssl, data, datalen);
+    }
+
+    void closeSocket()
+    {
+        if (this->ssl)
+        {
+            SSL_shutdown(this->ssl);
+            SSL_free(this->ssl);
+        }
+
+        if (this->sslContext)
+        {
+            SSL_CTX_free(this->sslContext);
+        }
+
+        Socket::closeSocket();
+    }
 
     const CHAR *getCipher() const { return SSL_get_cipher(ssl); };
 };

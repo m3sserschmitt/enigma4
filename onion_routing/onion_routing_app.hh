@@ -143,7 +143,7 @@ public:
      * @param clientsock Socket used to read data from client.
      * @return int -1 if failure, 0 if success.
      */
-    int handleClient(int clientsock);
+    int handleClient(Socket *);
 
     const std::string getAddress() const { return this->address; }
 };

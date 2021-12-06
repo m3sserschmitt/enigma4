@@ -22,6 +22,11 @@ class Socket
     // size of extraBytesBuffer in bytes
     int delta;
 
+    virtual ssize_t readSocket(int fd, size_t nbytes)
+    {
+        return read(this->fd, this->extraBytesBuffer, SOCKET_MAX_BUFFER_SIZE);
+    }
+
     /**
      * @brief When more data than required are read from socket, they are storead into local buffer
      * and this method is called to recover those extra bytes of data from previous read operation
@@ -78,11 +83,9 @@ public:
 
     virtual int createConnection(const std::string &host, const std::string &port);
 
-    virtual void wrap(int fd) { this->fd = fd; };
-
     int getFd() const { return this->fd; }
 
-    void closeSocket()
+    virtual void closeSocket()
     {
         close(this->fd);
         this->fd = -1;
@@ -90,11 +93,17 @@ public:
 
     bool isConnected() const { return this->fd > 0; }
 
+    virtual int wrap(int fd)
+    {
+        this->fd = fd;
+        return 0;
+    };
+
     virtual ssize_t writeData(const MessageBuilder &mb) const;
 
     virtual ssize_t writeData(const BYTE *data, SIZE datalen) const;
 
-    ssize_t readData(MessageParser &mp);
+    virtual ssize_t readData(MessageParser &mp);
 
     virtual const CHAR *getCipher() const { return "(NONE)"; }
 

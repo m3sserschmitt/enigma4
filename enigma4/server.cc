@@ -2,8 +2,9 @@
 
 #include <unistd.h>
 #include <sys/un.h>
-#include "../util/debug.hh"
 
+#include "../networking/socket.hh"
+#include "../util/debug.hh"
 
 int Server::socketBind()
 {
@@ -27,7 +28,7 @@ int Server::socketBind()
         if ((this->servsock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
         {
             close(this->servsock);
-            
+
             continue;
         }
 
@@ -87,20 +88,22 @@ int Server::acceptClients()
     listen(this->servsock, this->backlog);
 
     int clientsock;
-    //sockaddr peer_addr;
-    //socklen_t peer_addrlen;
 
     while (true)
     {
-        clientsock = accept(this->servsock, 0, 0);
-        // INFO("clientsock: ", clientsock, "  servsock: ", this->servsock);
+        Socket *sock = this->acceptClient();
+
+        if(not sock)
+        {
+            return -1;
+        }
 
         if (not this->app)
         {
             break;
         }
 
-        this->app->handleClient(clientsock);
+        this->app->handleClient(sock);
     }
 
     return clientsock;

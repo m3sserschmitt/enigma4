@@ -75,7 +75,7 @@ ssize_t Socket::readLocalBuffer(MessageParser &mp)
 
 ssize_t Socket::readNetworkData(MessageParser &mp)
 {
-    ssize_t bytes_read = read(this->fd, this->extraBytesBuffer, SOCKET_MAX_BUFFER_SIZE);
+    ssize_t bytes_read = this->readSocket(this->fd, SOCKET_MAX_BUFFER_SIZE);
 
     if (not bytes_read)
     {
