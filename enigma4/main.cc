@@ -45,12 +45,27 @@ int main(int argc, char **argv)
         port = "8080";
     }
 
-    Server *server = new Server(host, port);
+    const char *certificateFile = getCmdOption(argv, argc, "-certificate");
 
+    if (not certificateFile)
+    {
+        ERROR("No certificate file provided");
+
+        return EXIT_FAILURE;
+    }
+
+    
     OnionRoutingApp &app = OnionRoutingApp::createApp(pubkey, privkey);
     NetworkBridge &networkBridge = NetworkBridge::createNetworkBridge(pubkey, privkey);
 
+    TlsServer *server = new TlsServer(host, port);
+    
+    server->useCertificateFile(certificateFile);
+    server->usePrivateKeyFile(privkey);
+
+
     app.attachNetworkBridge(&networkBridge);
+    server->attachApp(&app);
 
     const char *netfile = getCmdOption(argv, argc, "-netfile");
 
@@ -62,8 +77,6 @@ int main(int argc, char **argv)
     {
         FAILURE("No netfile provided; network connection failed.");
     }
-
-    server->attachApp(&app);
 
     if (server->socketBind() < 0)
     {

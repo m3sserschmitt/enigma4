@@ -2,16 +2,22 @@
 #define TLS_CLIENT_HH
 
 #include "client.hh"
+#include "../networking/tls_socket_client.hh"
 
-class TLSClient : public Client
+
+class TlsClient : public Client
 {
-    int setupSocket(const std::string &host, const std::string &port);
+    void makeSocket()
+    {
+        this->clientSocket = new TlsSocketClient();
+    }
 
-    TLSClient(const TLSClient &c);
-    const TLSClient &operator=(const TLSClient &c);
+    TlsClient(const TlsClient &c);
+    const TlsClient &operator=(const TlsClient &c);
 
 public:
-    TLSClient(const std::string &pubkey, const std::string &privkey) : Client(pubkey, privkey) {}
+    TlsClient(): Client() {}
+    TlsClient(const std::string &pubkey, const std::string &privkey) : Client(pubkey, privkey) {}
 };
 
 #endif

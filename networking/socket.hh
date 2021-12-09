@@ -105,7 +105,7 @@ public:
 
     virtual ssize_t readData(MessageParser &mp);
 
-    virtual const CHAR *getCipher() const { return "(NONE)"; }
+    virtual const std::string getCipher() const { return "(NONE)"; }
 
     static SIZE getMaxSocketBuffRead() { return SOCKET_MAX_BUFFER_SIZE; }
 };

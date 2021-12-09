@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <vector>
 
-#include "../onion_routing/client.hh"
+#include "../onion_routing/tls_client.hh"
 
 #include "../libcryptography/include/cryptography.hh"
 
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    Client client(client_pubkey, client_privkey);
+    TlsClient client(client_pubkey, client_privkey);
     client.onIncomingMessage(printMessageContent);
 
     cout << "[+] Client address: " << client.getClientHexaddress() << "\n";

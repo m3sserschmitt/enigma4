@@ -73,7 +73,7 @@ int OnionRoutingApp::joinNetwork(const string &netfile)
             continue;
         }
 
-        if(networkBridge->connectRemoteServer(tokens[0], tokens[1], tokens[2]) == 0)
+        if(networkBridge->connectRemoteServer(tokens[0], tokens[1], tokens[2], 1) == 0)
         {
             connections ++;
         }

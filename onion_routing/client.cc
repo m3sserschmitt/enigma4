@@ -10,13 +10,13 @@ using namespace std;
 Client::Client()
 {
     this->server = 0;
-    this->clientSocket = new Socket();
+    this->clientSocket = 0;
 }
 
 Client::Client(const string &pubkeyfile, const string &privkeyfile)
 {
     this->server = 0;
-    this->clientSocket = new Socket();
+    this->clientSocket = 0;
 
     this->setClientPublicKey(pubkeyfile);
     this->initCryptoContext(privkeyfile);
@@ -180,12 +180,18 @@ void *Client::dataListener(void *args)
     return 0;
 }
 
-int Client::setupSocket(const std::string &host, const std::string &port)
+int Client::connectSocket(const std::string &host, const std::string &port)
 {
+    if(not this->clientSocket)
+    {
+        this->makeSocket();
+    }
+
     if (this->clientSocket->isConnected())
     {
         this->clientSocket->closeSocket();
     }
+
 
     this->clientSocket->createConnection(host, port);
 
@@ -275,7 +281,7 @@ const string Client::addNode(const std::string &keyfile, const std::string &last
 
 int Client::createConnection(const string &host, const string &port, const string &keyfile, bool start_listener)
 {
-    if (this->setupSocket(host, port) < 0)
+    if (this->connectSocket(host, port) < 0)
     {
         return -1;
     }

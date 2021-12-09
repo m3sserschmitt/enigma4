@@ -37,8 +37,6 @@ class Client
     std::string pubkeyPEM;
     std::string hexaddress;
 
-    Socket *clientSocket;
-
     NetworkNode *server;
 
     NodesMap networkNodes;
@@ -88,7 +86,7 @@ class Client
      */
     static int decryptIncomingMessage(MessageParser &mp, NodesMap *nodes)
     {
-        if(not mp.hasMessageType(MESSAGE_ENC_AES))
+        if (not mp.hasMessageType(MESSAGE_ENC_AES))
         {
             return 1;
         }
@@ -114,16 +112,6 @@ class Client
     int initCryptoContext(const std::string &privkeyfile);
 
     /**
-     * @brief If socket not connected, then try to establish a connection to specified address.
-     * If socket is already connected to a remote host, then closes existing connection and opens a new one.
-     * 
-     * @param host Host to connect to
-     * @param port Port to connect to
-     * @return int 0 if success, -1 if failure
-     */
-    virtual int setupSocket(const std::string &host, const std::string &port);
-
-    /**
      * @brief Initialize NetworkNode structure
      * 
      * @param keyfile Public key of destination node
@@ -135,6 +123,11 @@ class Client
      * @return const std::string 64 bytes string representing address of initialized node
      */
     const std::string setupNetworkNode(const std::string &keyfile, NetworkNode **node, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
+
+    virtual void makeSocket()
+    {
+        this->clientSocket = new Socket();
+    }
 
     /**
      * @brief Send handshake message to a destination node
@@ -162,6 +155,9 @@ class Client
     */
     Client(const Client &c);
     const Client &operator=(const Client &c);
+
+protected:
+    Socket *clientSocket;
 
 public:
     Client();
@@ -255,6 +251,16 @@ public:
     const std::string getServerAddress() const { return this->server->getPubkeyHexDigest(); }
 
     /**
+     * @brief If socket not connected, then try to establish a connection to specified address.
+     * If socket is already connected to a remote host, then closes existing connection and opens a new one.
+     * 
+     * @param host Host to connect to
+     * @param port Port to connect to
+     * @return int 0 if success, -1 if failure
+     */
+    virtual int connectSocket(const std::string &host, const std::string &port);
+
+    /**
      * @brief Create a connection to specified server.
      * 
      * @param host Server hostname
@@ -326,6 +332,8 @@ public:
     bool isConnected() const { return this->clientSocket->isConnected(); }
 
     void onIncomingMessage(IncomingMessageCallback callback) { this->incomingMessageCallback = callback; }
+
+    const std::string getSocketCipher() { return this->clientSocket->getCipher(); }
 };
 
 #endif

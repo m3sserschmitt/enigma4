@@ -7,7 +7,7 @@
 
 // https://wiki.openssl.org/index.php/Simple_TLS_Server
 
-class TLSServer : public Server
+class TlsServer : public Server
 {
     SSL_CTX *sslContext;
 
@@ -31,7 +31,6 @@ class TLSServer : public Server
         }
 
         return SSL_new(this->sslContext);
-
     }
 
     Socket *makeSocket(int clientSocketFd)
@@ -46,13 +45,13 @@ class TLSServer : public Server
         TlsServerSocket *sock = new TlsServerSocket();
 
         sock->useSll(pendingConnectionSSL);
-        
-        if(sock->wrap(clientSocketFd) < 0)
+
+        if (sock->wrap(clientSocketFd) < 0)
         {
             return 0;
         }
-        
-        if(sock->acceptSslClient() < 0)
+
+        if (sock->acceptSslClient() < 0)
         {
             return 0;
         }
@@ -61,11 +60,20 @@ class TLSServer : public Server
     }
 
 public:
-    TLSServer() : Server() { this->initSslContext(); }
+    TlsServer() : Server()
+    {
+        this->initSslContext();
+    }
 
-    TLSServer(const std::string &host, const std::string &port) : Server(host, port) {}
+    TlsServer(const std::string &host, const std::string &port) : Server(host, port)
+    {
+        this->initSslContext();
+    }
 
-    TLSServer(const std::string &host, const std::string &port, const addrinfo *addrInfo, int backlog) : Server() {}
+    TlsServer(const std::string &host, const std::string &port, const addrinfo *addrInfo, int backlog) : Server()
+    {
+        this->initSslContext();
+    }
 
     int useCertificateFile(const std::string &certfile)
     {
@@ -76,7 +84,6 @@ public:
     {
         return SSL_CTX_use_PrivateKey_file(this->sslContext, privkeyfile.c_str(), SSL_FILETYPE_PEM) <= 0 ? -1 : 0;
     }
-
 };
 
 #endif

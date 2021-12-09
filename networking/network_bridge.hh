@@ -3,7 +3,7 @@
 
 #include "../protocol/message_parser.hh"
 
-#include "../onion_routing/client.hh"
+#include "../onion_routing/tls_client.hh"
 
 #include <string>
 #include <map>
@@ -19,7 +19,7 @@ class NetworkBridge
 
     NetworkBridge() {}
 
-    NetworkBridge(const std::string &pubkeyfile, const std::string privkeyfile) 
+    NetworkBridge(const std::string &pubkeyfile, const std::string privkeyfile)
     {
         this->pubkeyfile = pubkeyfile;
         this->privkeyfile = privkeyfile;
@@ -52,9 +52,17 @@ public:
      * @param pubkeyfile Public key of remote server
      * @return int 0 is success, -1 if failure
      */
-    int connectRemoteServer(const std::string &host, const std::string &port, const std::string &pubkeyfile)
+    int connectRemoteServer(const std::string &host, const std::string &port, const std::string &pubkeyfile, bool tls = false)
     {
-        Client *bridgeClient = new Client(this->pubkeyfile, this->privkeyfile);
+        Client *bridgeClient;
+        if (not tls)
+        {
+            bridgeClient = new Client(this->pubkeyfile, this->privkeyfile);
+        }
+        else
+        {
+            bridgeClient = new TlsClient(this->pubkeyfile, this->privkeyfile);
+        }
 
         bridgeClient->onIncomingMessage(incomingMessageCallback);
 
@@ -83,7 +91,7 @@ public:
 
         std::map<std::string, Client *>::iterator remoteServer = remoteServers.find(mp.getParsedNextAddress());
 
-        if(remoteServer == remoteServersMapEnd)
+        if (remoteServer == remoteServersMapEnd)
         {
             return -1;
         }

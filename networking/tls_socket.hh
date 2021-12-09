@@ -62,7 +62,7 @@ public:
         Socket::closeSocket();
     }
 
-    const CHAR *getCipher() const { return SSL_get_cipher(ssl); };
+    virtual const std::string getCipher() const { return SSL_get_cipher(ssl); };
 };
 
 #endif

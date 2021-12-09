@@ -1,1 +1,1 @@
-../build/enigma4 -pubkey server_public2.pem -privkey server_private2.pem -netfile netfile2 -port 8081
+../build/enigma4 -pubkey server_public2.pem -privkey server_private2.pem -netfile netfile2 -port 8081 -certificate server_cert2.pem
