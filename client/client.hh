@@ -3,17 +3,15 @@
 
 #include "../libcryptography/include/cryptography.hh"
 
-#include "../protocol/message_builder.hh"
-#include "../protocol/message_parser.hh"
+#include "../net/messages/message_builder.hh"
+#include "../net/messages/message_parser.hh"
 
-#include "../onion_routing/connection.hh"
+#include "../net/connection.hh"
+#include "../net/network_node.hh"
 
-#include "route.hh"
+#include "../net/sockets/socket.hh"
 
-#include "../networking/socket.hh"
-
-#include "crypto_context.hh"
-
+#include "../types/crypto_context.hh"
 #include "../types/map_types.hh"
 
 typedef int (*IncomingMessageCallback)(MessageParser &);

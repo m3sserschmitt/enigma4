@@ -1,6 +1,6 @@
 #include "session.hh"
 
-#include "../protocol/message_parser.hh"
+#include "messages/message_parser.hh"
 
 using namespace std;
 

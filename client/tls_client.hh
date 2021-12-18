@@ -2,7 +2,7 @@
 #define TLS_CLIENT_HH
 
 #include "client.hh"
-#include "../networking/tls_socket_client.hh"
+#include "../net/sockets/tls_socket_client.hh"
 
 
 class TlsClient : public Client

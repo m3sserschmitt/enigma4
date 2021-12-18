@@ -2,7 +2,7 @@
 #define MESSAGE_HH
 
 #include <string.h>
-#include "../libcryptography/include/cryptography.hh"
+#include "../../libcryptography/include/cryptography.hh"
 
 #include "message_const.hh"
 

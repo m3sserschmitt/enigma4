@@ -1,7 +1,7 @@
 #ifndef MESSAGE_BUILDER_HH
 #define MESSAGE_BUILDER_HH
 
-#include "../libcryptography/include/cryptography.hh"
+#include "../../libcryptography/include/cryptography.hh"
 
 #include "message.hh"
 
@@ -32,7 +32,6 @@ class MessageBuilder : public Message
     int encrypt(AES_CRYPTO ctx);
 
     int handshakeSetupSessionKey(NetworkNode *route);
-    // int handshake_setup_session_key(AES_CRYPTO aesctx, RSA_CRYPTO rsactx);
     int handshakeSetupPubkey(AES_CRYPTO ctx, const std::string &pubkeypem);
     int signMessage(RSA_CRYPTO ctx);
 
@@ -62,7 +61,6 @@ public:
 
     int encrypt(NetworkNode *route);
 
-    // int handshake(AES_CRYPTO aesctx, RSA_CRYPTO encrrsactx, RSA_CRYPTO signrsactx = 0, const std::string &pubkeypem = "");
     int handshake(NetworkNode *route, RSA_CRYPTO signrsactx = 0, const std::string &pubkeypem = "");
 
     MessageBuilder &operator=(const MessageBuilder &mb);

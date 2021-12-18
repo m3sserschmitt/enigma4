@@ -2,29 +2,20 @@
 #define MESSAGE_PARSER_HH
 
 #include <map>
-#include "../libcryptography/include/cryptography.hh"
 
-#include "../onion_routing/route.hh"
+#include "../../libcryptography/include/cryptography.hh"
+
+#include "../network_node.hh"
 
 #include "message.hh"
 
-#include "../types/map_types.hh"
+#include "../../types/map_types.hh"
 
 class Connection;
 
 class MessageParser : public Message
 {
     Dictionary parseddata;
-
-    /*void removePayloadBeg(SIZE len)
-    {
-        BYTES payload = this->getPayloadPtr();
-        SIZE payload_size = this->getPayloadSize();
-
-        memcpy(payload, payload + len, payload_size);
-        payload_size -= len;
-        memset(payload + payload_size, 0, len);
-    }*/
 
     /**
      * @brief Extract next address from message raw data 
@@ -156,11 +147,6 @@ public:
 
         return payload_size;
     }
-
-    /* static SIZE computeTotalMessageSize(const BYTE *data)
-    {
-        return MessageParser::readPayloadSize(data) + MESSAGE_HEADER_SIZE;
-    } */
 
     /**
      * @brief Update object with provided data. This method overrides all existing data

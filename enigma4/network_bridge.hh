@@ -1,9 +1,9 @@
 #ifndef NETWORK_BRIDGE
 #define NETWORK_BRIDGE
 
-#include "../protocol/message_parser.hh"
+#include "../net/messages/message_parser.hh"
 
-#include "../onion_routing/tls_client.hh"
+#include "../client/tls_client.hh"
 
 #include <string>
 #include <map>

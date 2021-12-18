@@ -1,7 +1,7 @@
 #include <string.h>
 #include <thread>
 
-#include "./client.hh"
+#include "client.hh"
 
 #include "../util/debug.hh"
 

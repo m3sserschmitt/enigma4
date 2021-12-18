@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <sys/un.h>
 
-#include "../networking/socket.hh"
+#include "../net/sockets/socket.hh"
 #include "../util/debug.hh"
 
 int Server::socketBind()

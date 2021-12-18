@@ -1,9 +1,9 @@
 #ifndef CONNECTION_HH
 #define CONNECTION_HH
 
-#include "../networking/socket.hh"
+#include "sockets/socket.hh"
 #include "session.hh"
-#include "../protocol/message_parser.hh"
+#include "messages/message_parser.hh"
 
 class Connection
 {

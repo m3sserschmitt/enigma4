@@ -1,8 +1,6 @@
-#include "./onion_routing_app.hh"
+#include "onion_routing_app.hh"
 
-#include "../protocol/message_parser.hh"
-
-#include "../onion_routing/client.hh"
+#include "../net/messages/message_parser.hh"
 
 #include "../util/debug.hh"
 

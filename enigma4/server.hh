@@ -1,8 +1,8 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include "../onion_routing/app.h"
-#include "../networking/tls_socket_server.hh"
+#include "app.h"
+#include "../net/sockets/tls_socket.hh"
 
 #include <netdb.h>
 #include <string>

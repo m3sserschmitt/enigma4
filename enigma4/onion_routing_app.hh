@@ -7,10 +7,9 @@
 
 #include "app.h"
 
-#include "connection.hh"
-#include "client.hh"
+#include "../net/connection.hh"
 
-#include "../networking/network_bridge.hh"
+#include "network_bridge.hh"
 
 
 class OnionRoutingApp : public App

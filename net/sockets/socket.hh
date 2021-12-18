@@ -1,9 +1,9 @@
 #ifndef SOCKET_HH
 #define SOCKET_HH
 
-#include "../protocol/message_parser.hh"
-#include "../protocol/message_builder.hh"
-#include "../util/debug.hh"
+#include "../messages/message_parser.hh"
+#include "../messages/message_builder.hh"
+#include "../../util/debug.hh"
 
 #include <math.h>
 #include <unistd.h>

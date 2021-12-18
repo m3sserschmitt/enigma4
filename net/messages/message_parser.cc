@@ -1,6 +1,6 @@
-#include "../protocol/message_parser.hh"
+#include "message_parser.hh"
 
-#include "../onion_routing/connection.hh"
+#include "../connection.hh"
 
 using namespace std;
 

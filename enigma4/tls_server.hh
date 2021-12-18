@@ -2,6 +2,7 @@
 #define TLS_SERVER_HH
 
 #include "server.hh"
+#include "../net/sockets/tls_socket_server.hh"
 
 #include <openssl/ssl.h>
 

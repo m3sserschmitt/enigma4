@@ -1,8 +1,6 @@
-#include "./tls_server.hh"
-
-#include "../onion_routing/onion_routing_app.hh"
-
-#include "../networking/network_bridge.hh"
+#include "tls_server.hh"
+#include "onion_routing_app.hh"
+#include "network_bridge.hh"
 
 #include "../util/cmd.hh"
 #include "../util/debug.hh"

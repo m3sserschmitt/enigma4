@@ -2,9 +2,10 @@
 #define ROUTE_HH
 
 #include "../libcryptography/include/cryptography.hh"
-#include "crypto_context.hh"
-#include <string.h>
+#include "../types/crypto_context.hh"
 #include "../util/util.hh"
+
+#include <string.h>
 
 class NetworkNode
 {
