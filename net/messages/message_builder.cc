@@ -14,7 +14,7 @@ int MessageBuilder::encrypt(AES_CRYPTO ctx)
     }
 
     BYTES out = 0;
-    int result = CRYPTO::AES_encrypt(ctx, this->getData(), this->getDatalen(), &out);
+    int result = CRYPTO::AES_auth_encrypt(ctx, this->getData(), this->getDatalen(), &out);
 
     if (result < 0)
     {
@@ -80,7 +80,7 @@ int MessageBuilder::handshakeSetupPubkey(AES_CRYPTO ctx, const string &pubkeypem
 
     string data = "pubkey: " + pubkeypem;
 
-    if ((encrlen = CRYPTO::AES_encrypt(ctx, (const BYTE *)data.c_str(), data.size(), &encrdata)) < 0)
+    if ((encrlen = CRYPTO::AES_auth_encrypt(ctx, (const BYTE *)data.c_str(), data.size(), &encrdata)) < 0)
     {
         delete[] encrdata;
         return -1;

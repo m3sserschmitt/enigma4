@@ -23,10 +23,13 @@ public:
     {
         this->aesctx = CRYPTO::AES_CRYPTO_new();
 
-        CRYPTO::AES_iv_autoset(1, this->aesctx);
-        CRYPTO::AES_iv_append(1, this->aesctx);
+        //CRYPTO::AES_iv_autoset(1, this->aesctx);
+        //CRYPTO::AES_iv_append(1, this->aesctx);
 
-        CRYPTO::AES_init(0, 0, 0, 0, this->aesctx);
+        //CRYPTO::AES_init(0, 0, 0, 0, this->aesctx);
+
+        CRYPTO::AES_init_ctx(ENCRYPT, this->aesctx);
+        CRYPTO::AES_init_ctx(DECRYPT, this->aesctx);
     }
 
     ~SessionManager()
