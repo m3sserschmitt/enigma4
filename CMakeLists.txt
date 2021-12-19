@@ -33,7 +33,11 @@ enigma4/onion_routing_app.cc
 enigma4/main.cc
 )
 
-target_link_libraries(enigma4 client net cryptography6 ssl crypto)
+target_link_libraries(enigma4 client net cryptography6 ssl)
+
+add_executable(eclient example/eclient.cc)
+
+target_link_libraries(eclient client net cryptography6 ssl)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

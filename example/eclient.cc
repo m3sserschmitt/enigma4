@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <vector>
 
-#include "../onion_routing/tls_client.hh"
+#include "../client/tls_client.hh"
 
 #include "../libcryptography/include/cryptography.hh"
 

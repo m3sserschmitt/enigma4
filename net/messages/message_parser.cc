@@ -44,7 +44,7 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
     }
 
     BYTES out = 0;
-    int outlen = CRYPTO::AES_decrypt(ctx, this->getPayload() + SESSION_ID_SIZE, this->getPayloadSize() - SESSION_ID_SIZE, &out);
+    int outlen = CRYPTO::AES_auth_decrypt(ctx, this->getPayload() + SESSION_ID_SIZE, this->getPayloadSize() - SESSION_ID_SIZE, &out);
 
     if (outlen < 0)
     {
@@ -116,7 +116,19 @@ int MessageParser::handshakeDecryptSessionKey(RSA_CRYPTO rsactx, AES_CRYPTO aesc
     this->parseddata.insert(pair<string, string>("id", sessionID));
 
     // last 32 bytes represent session key;
-    if (CRYPTO::AES_setup_key(decr + SESSION_ID_SIZE, SESSION_KEY_SIZE, aesctx) < 0 or CRYPTO::AES_init(0, 0, 0, 0, aesctx) < 0)
+    if (CRYPTO::AES_setup_key(decr + SESSION_ID_SIZE, SESSION_KEY_SIZE, aesctx) < 0)
+    {
+        ret = -1;
+        goto cleanup;
+    }
+
+    if(CRYPTO::AES_init_ctx(ENCRYPT, aesctx) < 0)
+    {
+        ret = -1;
+        goto cleanup;
+    }
+
+    if(CRYPTO::AES_init_ctx(DECRYPT, aesctx) < 0)
     {
         ret = -1;
         goto cleanup;
@@ -135,7 +147,7 @@ int MessageParser::handshakeDecryptPubkey(AES_CRYPTO aesctx, RSA_CRYPTO rsactx)
     SIZE encrlen = this->getPayloadSize() - 2 * MESSAGE_ENC_PUBKEY_SIZE;
     int decrlen;
 
-    if ((decrlen = CRYPTO::AES_decrypt(aesctx, this->getPayloadPtr() + MESSAGE_ENC_PUBKEY_SIZE, encrlen, &pubkey)) < 0)
+    if ((decrlen = CRYPTO::AES_auth_decrypt(aesctx, this->getPayloadPtr() + MESSAGE_ENC_PUBKEY_SIZE, encrlen, &pubkey)) < 0)
     {
         delete[] pubkey;
         return -1;

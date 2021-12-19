@@ -20,8 +20,8 @@ public:
         this->rsactx = CRYPTO::RSA_CRYPTO_new();
         this->aesctx = CRYPTO::AES_CRYPTO_new();
 
-        CRYPTO::AES_iv_autoset(1, this->aesctx);
-        CRYPTO::AES_iv_append(1, this->aesctx);
+        //CRYPTO::AES_iv_autoset(1, this->aesctx);
+        //CRYPTO::AES_iv_append(1, this->aesctx);
     }
 
     ~CryptoContext()
@@ -69,38 +69,59 @@ public:
     {
         if (key and keylen)
         {
-            return CRYPTO::AES_setup_key(key, keylen, this->aesctx);
+            if(CRYPTO::AES_setup_key(key, keylen, this->aesctx) < 0)
+            {
+                return -1;
+            }
+
+            if(CRYPTO::AES_init_ctx(ENCRYPT, this->aesctx) < 0)
+            {
+                return -1;
+            }
+
+            if(CRYPTO::AES_init_ctx(DECRYPT, this->aesctx) < 0)
+            {
+                return -1;
+            }
+
+            return  0;
         }
         else
         {
-            BYTES _key = 0;
-            BYTES _salt = 0;
+            BYTES keyBuffer = 0;
             int ret = 0;
 
-            if (CRYPTO::rand_bytes(32, &_key) < 0)
+            if (CRYPTO::rand_bytes(AES_GCM_KEY_SIZE, &keyBuffer) < 0)
             {
                 ret = -1;
                 goto cleanup;
             }
 
-            if (CRYPTO::rand_bytes(32, &_salt) < 0)
+            if(CRYPTO::AES_setup_key(keyBuffer, AES_GCM_KEY_SIZE, this->aesctx) < 0)
             {
                 ret = -1;
                 goto cleanup;
             }
 
-            if (CRYPTO::AES_init(_key, 32, _salt, 100000, this->aesctx) < 0)
+            if(CRYPTO::AES_init_ctx(ENCRYPT, this->aesctx) < 0)
+            {
+                ret = -1;
+                goto cleanup;
+            }
+
+            if(CRYPTO::AES_init_ctx(DECRYPT, this->aesctx) < 0)
             {
                 ret = -1;
                 goto cleanup;
             }
 
         cleanup:
-            delete[] _key;
-            delete[] _salt;
+            delete[] keyBuffer;
+            keyBuffer = 0;
 
             return ret;
         }
+
         return 0;
     }
 
