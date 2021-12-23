@@ -9,13 +9,13 @@ using namespace std;
 
 Client::Client()
 {
-    this->server = 0;
+    this->guardNode = 0;
     this->clientSocket = 0;
 }
 
 Client::Client(const string &pubkeyfile, const string &privkeyfile)
 {
-    this->server = 0;
+    this->guardNode = 0;
     this->clientSocket = 0;
 
     this->setClientPublicKey(pubkeyfile);
@@ -29,7 +29,7 @@ Client::~Client()
 
     for (; it != it_end; it++)
     {
-        if (it->second != this->server)
+        if (it->second != this->guardNode)
         {
             delete it->second;
             it->second = 0;
@@ -37,10 +37,10 @@ Client::~Client()
     }
 
     delete this->clientSocket;
-    delete this->server;
+    delete this->guardNode;
 
     this->clientSocket = 0;
-    this->server = 0;
+    this->guardNode = 0;
 }
 
 int Client::initCryptoContext(const string &privkeyfile)
@@ -58,7 +58,7 @@ int Client::initCryptoContext(const string &privkeyfile)
     return 0;
 }
 
-int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *cryptoContext, NodesMap *routes)
+int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *cryptoContext, NodesMap *networkNodes)
 {
     if (not mp.isHandshake())
     {
@@ -77,7 +77,7 @@ int Client::setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *
         return -1;
     }
 
-    routes->insert(pair<string, NetworkNode *>(mp.getParsedId(), newNode));
+    networkNodes->insert(pair<string, NetworkNode *>(mp.getParsedId(), newNode));
 
     INFO("Handshake completed for session ID: ", mp.getParsedId());
 
@@ -292,14 +292,14 @@ int Client::createConnection(const string &host, const string &port, const strin
         return -1;
     }
 
-    string serv_address = this->setupNetworkNode(keyfile, &this->server);
+    string serv_address = this->setupNetworkNode(keyfile, &this->guardNode);
 
-    if (not this->server)
+    if (not this->guardNode)
     {
         return -1;
     }
 
-    if (this->performHandshake(this->server) < 0)
+    if (this->performHandshake(this->guardNode) < 0)
     {
         return -1;
     }
@@ -385,9 +385,9 @@ void Client::cleanupCircuit(NetworkNode *route)
 
 int Client::sendExitSignal(const string &address)
 {
-    NetworkNode *route = this->networkNodes[address];
+    NetworkNode *destinationNode = this->networkNodes[address];
 
-    if (not route)
+    if (not destinationNode)
     {
         return -1;
     }
@@ -395,9 +395,9 @@ int Client::sendExitSignal(const string &address)
     MessageBuilder mb;
     mb.makeExitSignal();
 
-    int result = this->writeDataWithEncryption(mb, route);
+    int result = this->writeDataWithEncryption(mb, destinationNode);
 
-    this->cleanupCircuit(route);
+    this->cleanupCircuit(destinationNode);
 
     return result;
 }
