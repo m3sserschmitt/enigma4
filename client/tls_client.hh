@@ -18,6 +18,8 @@ class TlsClient : public Client
 public:
     TlsClient(): Client() {}
     TlsClient(const std::string &pubkey, const std::string &privkey) : Client(pubkey, privkey) {}
+
+    ~TlsClient() {}
 };
 
 #endif

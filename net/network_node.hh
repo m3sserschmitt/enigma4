@@ -18,6 +18,9 @@ class NetworkNode
     NetworkNode *next;
     NetworkNode *previous;
 
+    NetworkNode(const NetworkNode &);
+    const NetworkNode &operator=(const NetworkNode &);
+
 public:
 
     NetworkNode()

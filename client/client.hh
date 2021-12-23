@@ -35,7 +35,7 @@ class Client
     std::string pubkeyPEM;
     std::string hexaddress;
 
-    NetworkNode *server;
+    NetworkNode *guardNode;
 
     NodesMap networkNodes;
 
@@ -246,7 +246,7 @@ public:
      * 
      * @return const std::string Server address.
      */
-    const std::string getServerAddress() const { return this->server->getPubkeyHexDigest(); }
+    const std::string getServerAddress() const { return this->guardNode->getPubkeyHexDigest(); }
 
     /**
      * @brief If socket not connected, then try to establish a connection to specified address.
