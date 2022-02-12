@@ -30,6 +30,8 @@ class Client
 
         // function pointer to be called when new message arrives
         IncomingMessageCallback incomingMessageCallback;
+
+        pthread_t *listenerThread;
     };
 
     std::string pubkeyPEM;
@@ -42,6 +44,8 @@ class Client
     CryptoContext cryptoContext;
 
     IncomingMessageCallback incomingMessageCallback;
+
+    pthread_t listenerThread;
 
     /**
      * @brief Check if message is an exit signal
