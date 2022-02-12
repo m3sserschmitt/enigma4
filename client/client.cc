@@ -24,8 +24,15 @@ Client::Client(const string &pubkeyfile, const string &privkeyfile)
 
 Client::~Client()
 {
+    // cancel listener thread and wait for it to terminate;
+    pthread_cancel(this->listenerThread);
+    pthread_join(this->listenerThread, 0);
+
     std::map<std::string, NetworkNode *>::iterator it = networkNodes.begin();
     std::map<std::string, NetworkNode *>::iterator it_end = networkNodes.end();
+
+
+    this->clientSocket->closeSocket();
 
     for (; it != it_end; it++)
     {
@@ -147,6 +154,9 @@ int Client::processIncomingMessage(MessageParser &mp, CryptoContext *cryptoConte
 
 void *Client::dataListener(void *args)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, 0);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
+
     ClientListenerContext *clientListenerData = (ClientListenerContext *)args;
 
     Socket *clientSocket = clientListenerData->clientSocket;
@@ -312,9 +322,9 @@ int Client::createConnection(const string &host, const string &port, const strin
         clientListenerData->clientSocket = this->clientSocket;
         clientListenerData->cryptoContext = &this->cryptoContext;
         clientListenerData->incomingMessageCallback = this->incomingMessageCallback;
-
-        pthread_t new_thread;
-        pthread_create(&new_thread, 0, this->dataListener, clientListenerData);
+        clientListenerData->listenerThread = &this->listenerThread;
+        
+        pthread_create(&listenerThread, 0, this->dataListener, clientListenerData);
     }
 
     return 0;
