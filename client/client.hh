@@ -11,10 +11,10 @@
 
 #include "../net/sockets/socket.hh"
 
-#include "../types/crypto_context.hh"
 #include "../types/map_types.hh"
 
-typedef int (*IncomingMessageCallback)(MessageParser &);
+typedef void (*OnMessageReceivedCallback)(const BYTE *, SIZE);
+typedef void (*OnNewSessionSetCallback)(const CHAR *);
 
 class Client
 {
@@ -24,32 +24,38 @@ class Client
         Socket *clientSocket;
 
         // initialized crypto context for cryptographic operations
-        CryptoContext *cryptoContext;
+        RSA_CRYPTO rsactx;
+
+        AES_CRYPTO aesctx;
 
         NodesMap *networkNodes;
 
         // function pointer to be called when new message arrives
-        IncomingMessageCallback incomingMessageCallback;
+        OnMessageReceivedCallback messageReceivedCallback;
+
+        OnNewSessionSetCallback newSessionSetCallback;
 
         pthread_t *listenerThread;
     };
 
-    std::string pubkeyPEM;
+    std::string pubkeypem;
     std::string hexaddress;
 
     NetworkNode *guardNode;
 
     NodesMap networkNodes;
 
-    CryptoContext cryptoContext;
+    RSA_CRYPTO rsactx;
+    AES_CRYPTO aesctx;
 
-    IncomingMessageCallback incomingMessageCallback;
+    OnMessageReceivedCallback messageReceivedCallback;
+    OnNewSessionSetCallback newSessionSetCallback;
 
-    pthread_t listenerThread;
+    pthread_t *listenerThread;
 
     /**
      * @brief Check if message is an exit signal
-     * 
+     *
      * @param mp Message object to be checked
      * @param nodes Pointer to nodes map to clean corresponding nodes
      * @return int 0 if success, -1 of failure, 1 if message is not an exit signal
@@ -59,28 +65,28 @@ class Client
     /**
      * @brief Check if incoming message is a handshake. If so, get all required data from
      * handshake message and create a new NetworkNode structure
-     * 
+     *
      * @param mp Message to be cheked
      * @param localCryptoContext Local crypto context used for decryption and verification
      * @param nodes Nodes map to insert newly created NetworkNode structure
      * @return int 0 if success, -1 if failure, 1 if message is not handshake
      */
-    static int setupSessionFromIncomingHandshake(MessageParser &mp, CryptoContext *localCryptoContext, NodesMap *nodes);
+    static int setupSessionFromIncomingHandshake(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, NodesMap *networkNodes);
 
     /**
      * @brief Process incoming message: try handshake, AES decryption and check for exit signal
-     * 
+     *
      * @param mp Message to be processed
      * @param localCryptoContext Local crypto context required for RSA decryption in case of handshake message
      * @param nodes Nodes map used to lookup for session ID in case of AES decryption and/or exit signal
-     * @return int 0 if no further actions required, -1 if errors encountered, 1 if message needs 
+     * @return int 0 if no further actions required, -1 if errors encountered, 1 if message needs
      * further actions (i.e forwarding)
      */
-    static int processIncomingMessage(MessageParser &mp, CryptoContext *localCryptoContext, NodesMap *nodes);
+    static int processIncomingMessage(MessageParser &mp, RSA_CRYPTO rsactx, AES_CRYPTO aesctx, NodesMap *networkNodes);
 
     /**
      * @brief Decrypt incoming message
-     * 
+     *
      * @param mp Message object to be decrypted
      * @param nodes Pointer to nodes map to search for corresponding NetworkNode structure
      * containing required crypto context for decryption
@@ -88,7 +94,7 @@ class Client
      */
     static int decryptIncomingMessage(MessageParser &mp, NodesMap *nodes)
     {
-        if (not mp.hasMessageType(MESSAGE_ENC_AES))
+        if (not mp.hasAtLeastOneType(MESSAGE_ENC_AES))
         {
             return 1;
         }
@@ -98,7 +104,7 @@ class Client
 
     /**
      * @brief Listen for incoming messages
-     * 
+     *
      * @param node It must be a pointer to a initialized ClientListenerContext structure
      * @return void* This method returns null
      */
@@ -106,16 +112,16 @@ class Client
 
     /**
      * @brief Initialize local cryptoContext structure, both RSA and AES
-     * 
+     *
      * @param privkeyfile Path to private key PEM file used to initialize RSA context for decryption
      * and signing
-     * @return int 0 if success, -1 if failure 
+     * @return int 0 if success, -1 if failure
      */
-    int initCryptoContext(const std::string &privkeyfile);
+    int initCrypto(const std::string &privkeyfile);
 
     /**
      * @brief Initialize NetworkNode structure
-     * 
+     *
      * @param keyfile Public key of destination node
      * @param node If successfull, it contains resulting NetworkNode structure
      * @param key [Optional] Session key. If null, then a randomly generated session key will be used
@@ -126,24 +132,27 @@ class Client
      */
     const std::string setupNetworkNode(const std::string &keyfile, NetworkNode **node, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = 32, SIZE idlen = 16);
 
-    virtual void makeSocket()
-    {
-        this->clientSocket = new Socket();
-    }
+    virtual void makeSocket() { this->clientSocket = new Socket(); }
 
     /**
      * @brief Send handshake message to a destination node
-     * 
+     *
      * @param destinationNode Destination node
      * @param identify If true, then client will perform a full handshake (send encrypted public key + message signature).
      * Otherwise, only session ID and session key will be transmitted
      * @return int 0 if success, -1 if failure
      */
-    int performHandshake(NetworkNode *destinationNode, bool identify = true);
+    int addNewSession(NetworkNode *destinationNode);
+
+    int guardHandhsakePhaseOne(AES_CRYPTO aesctx, RSA_CRYPTO encrctx, BYTES *sessionId, BYTES *test);
+
+    int guardHandshakePhaseTwo(RSA_CRYPTO signctx, const BYTE *sessionId, const BYTE *test);
+
+    int performGuardHandshake(NetworkNode *guardNode);
 
     /**
      * @brief Write data to a destination node. Multiple encryption layers applied
-     * 
+     *
      * @param mb Message Object containing data to be transmitted
      * @param destinationNode Destination node
      * @return int Size of transmitted data in bytes, -1 if failure
@@ -152,9 +161,38 @@ class Client
 
     void cleanupCircuit(NetworkNode *route);
 
+    const BYTE *getGuardSessionKey()
+    {
+        BYTES sessionKey = 0;
+
+        if (CRYPTO::AES_read_key(this->guardNode->getAES(), SESSION_ID_SIZE, &sessionKey) < 0)
+        {
+            delete[] sessionKey;
+            sessionKey = 0;
+
+            return 0;
+        }
+
+        return sessionKey;
+    }
+
+    const BYTE *getGuardSessionId()
+    {
+        BYTES sessionId = new BYTE[SESSION_KEY_SIZE + 1];
+
+        if (not sessionId)
+        {
+            return 0;
+        }
+
+        memcpy(sessionId, this->guardNode->getId(), SESSION_ID_SIZE);
+
+        return sessionId;
+    }
+
     /*
      * Copy constructor & operator= decrared private in order to prevent a Client object to be copied
-    */
+     */
     Client(const Client &c);
     const Client &operator=(const Client &c);
 
@@ -170,47 +208,47 @@ public:
 
     /**
      * @brief Set the Client Public Key
-     * 
+     *
      * @param pubkeyfile Path to public key PEM file
      * @return int 0 if success, -1 if failure
      */
     int setClientPublicKey(const std::string &pubkeyfile)
     {
-        this->pubkeyPEM = (PLAINTEXT)readFile(pubkeyfile, "rb");
-        return KEY_UTIL::getKeyHexDigest(this->pubkeyPEM, this->hexaddress) < 0 ? -1 : 0;
+        this->pubkeypem = (PLAINTEXT)readFile(pubkeyfile, "rb");
+        return KEY_UTIL::getKeyHexDigest(this->pubkeypem, this->hexaddress) < 0 ? -1 : 0;
     }
 
     /**
      * @brief Set the Client Public Key PEM
-     * 
+     *
      * @param pubkeypem Public key in PEM format
      * @return int 0 if success, -1 if failure
      */
     int setClientPublicKeyPEM(const std::string &pubkeypem)
     {
-        this->pubkeyPEM = pubkeypem;
-        return KEY_UTIL::getKeyHexDigest(this->pubkeyPEM, this->hexaddress) < 0 ? -1 : 0;
+        this->pubkeypem = pubkeypem;
+        return KEY_UTIL::getKeyHexDigest(this->pubkeypem, this->hexaddress) < 0 ? -1 : 0;
     }
 
     /**
      * @brief Set the Client Private Key
-     * 
+     *
      * @param privkeyfile Path to private key PEM file
      * @return int 0 if success, -1 if failure
      */
     int setClientPrivateKey(const std::string &privkeyfile)
     {
-        if (this->cryptoContext.rsaInitPrivkeyFile(privkeyfile) < 0)
+        if (CRYPTO::RSA_init_key_file(privkeyfile, 0, 0, PRIVATE_KEY, this->rsactx) < 0)
         {
             return -1;
         }
 
-        if (this->cryptoContext.rsaInitDecryption() < 0)
+        if (CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT) < 0)
         {
             return -1;
         }
 
-        if (this->cryptoContext.rsaInitSignature() < 0)
+        if (CRYPTO::RSA_init_ctx(this->rsactx, SIGN) < 0)
         {
             return -1;
         }
@@ -220,17 +258,17 @@ public:
 
     int setClientPrivateKeyPEM(const std::string &privkeypem)
     {
-        if (this->cryptoContext.rsaInitPrivkey(privkeypem) < 0)
+        if (CRYPTO::RSA_init_key(privkeypem, 0, 0, PRIVATE_KEY, this->rsactx) < 0)
         {
             return -1;
         }
 
-        if (this->cryptoContext.rsaInitDecryption() < 0)
+        if (CRYPTO::RSA_init_ctx(this->rsactx, DECRYPT) < 0)
         {
             return -1;
         }
 
-        if (this->cryptoContext.rsaInitSignature() < 0)
+        if (CRYPTO::RSA_init_ctx(this->rsactx, SIGN) < 0)
         {
             return -1;
         }
@@ -240,14 +278,14 @@ public:
 
     /**
      * @brief Get the client hexaddress.
-     * 
+     *
      * @return const std::string& Client local address.
      */
     const std::string &getClientHexaddress() const { return this->hexaddress; }
 
     /**
      * @brief Get the server address.
-     * 
+     *
      * @return const std::string Server address.
      */
     const std::string getServerAddress() const { return this->guardNode->getPubkeyHexDigest(); }
@@ -255,7 +293,7 @@ public:
     /**
      * @brief If socket not connected, then try to establish a connection to specified address.
      * If socket is already connected to a remote host, then closes existing connection and opens a new one.
-     * 
+     *
      * @param host Host to connect to
      * @param port Port to connect to
      * @return int 0 if success, -1 if failure
@@ -264,7 +302,7 @@ public:
 
     /**
      * @brief Create a connection to specified server.
-     * 
+     *
      * @param host Server hostname
      * @param port Port number
      * @param keyfile Path to server public key in PEM format.
@@ -272,24 +310,26 @@ public:
      * server.
      * @return int 0 if success, -1 if failure.
      */
-    int createConnection(const std::string &host, const std::string &port, const std::string &keyfile, bool startListener = true);
+    int createConnection(const std::string &host, const std::string &port, const std::string &keyfile);
+
+    int startListener();
 
     /**
      * @brief Add a new node to a circuit.
-     * 
+     *
      * @param keyfile Path to node (a server, or other client) public key in PEM format.
      * @param lastAddress Address of last added node into circuit.
-     * @param identify If true, then a full handshake is performed (session encryption key, local public key and 
+     * @param identify If true, then a full handshake is performed (session encryption key, local public key and
      * digital signature). Otherwise, only a session key is added to handshake message.
-     * @param makeNewSession If true, then a new session id is generated (typically when the first node 
+     * @param makeNewSession If true, then a new session id is generated (typically when the first node
      * is added into a circuit).
-     * @return const std::string Address of newly added node. 
+     * @return const std::string Address of newly added node.
      */
-    const std::string addNode(const std::string &keyfile, const std::string &lastAddress, bool identify = false, bool makeNewSession = false);
+    const std::string addNode(const std::string &keyfile, const std::string &lastAddress, bool newSessionId = false);
 
     /**
      * @brief Write data to specified address.
-     * 
+     *
      * @param data Data to be sent.
      * @param datalen Data length in bytes.
      * @param address Destination address.
@@ -310,7 +350,7 @@ public:
 
     /**
      * @brief This method sends data directly to server, no encryption layer applied.
-     * 
+     *
      * @param mp Message object to be sent
      * @return int 0 if success, -1 if failure.
      */
@@ -321,7 +361,7 @@ public:
 
     /**
      * @brief Send EXIT message over circuit
-     * 
+     *
      * @param address Destination address (typically last address in circuit).
      * @return int 0 if success, -1 if failure.
      */
@@ -333,9 +373,38 @@ public:
 
     bool isConnected() const { return this->clientSocket->isConnected(); }
 
-    void onIncomingMessage(IncomingMessageCallback callback) { this->incomingMessageCallback = callback; }
+    void onIncomingMessage(OnMessageReceivedCallback callback) { this->messageReceivedCallback = callback; }
+
+    void OnSessionSet(OnNewSessionSetCallback callback) { this->newSessionSetCallback = callback; }
 
     const std::string getSocketCipher() { return this->clientSocket->getCipher(); }
+
+    Connection *getConnection()
+    {
+        Connection *conn = new Connection();
+
+        if (not conn)
+        {
+            return 0;
+        }
+
+        const BYTE *sessionId = this->getGuardSessionId();
+        const BYTE *sessionKey = this->getGuardSessionKey();
+
+        conn->setSocket(this->clientSocket);
+        conn->addSession(sessionId, sessionKey);
+        conn->setAddress(this->guardNode->getPubkeyHexDigest());
+
+        this->clientSocket = 0;
+
+        delete[] sessionId;
+        delete[] sessionKey;
+
+        sessionId = 0;
+        sessionKey = 0;
+
+        return conn;
+    }
 };
 
 #endif

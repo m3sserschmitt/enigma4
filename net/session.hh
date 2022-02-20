@@ -5,8 +5,6 @@
 #include <string>
 #include "../libcryptography/include/cryptography.hh"
 
-class MessageParser;
-
 class SessionManager
 {
     AES_CRYPTO aesctx;
@@ -40,11 +38,9 @@ public:
         CRYPTO::AES_CRYPTO_free(this->aesctx);
     }
 
-    int setup(RSA_CRYPTO rsactx, MessageParser &mp);
-
     AES_CRYPTO getEncryptionContext(const std::string &id) { return this->keys[id]; }
 
-    void set(const std::string &id, AES_CRYPTO aesctx) { this->keys[id] = aesctx; }
+    int set(const BYTE *sessionId, const BYTE *sessionKey);
 
     void cleanup(const std::string &id)
     {

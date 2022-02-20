@@ -18,9 +18,9 @@ class MessageParser : public Message
     Dictionary parseddata;
 
     /**
-     * @brief Extract next address from message raw data 
+     * @brief Extract next address from message raw data
      * (used internally by removeEncryptionLayer method).
-     * 
+     *
      * @param messsageRawData Message byte array representation
      */
     void parseNextAddress(const BYTE *messsageRawData)
@@ -59,7 +59,7 @@ class MessageParser : public Message
     }
 
     /**
-     * @brief Extract session ID 
+     * @brief Extract session ID
      * (used internally by removeEncryptionLayerMethod and handshake methods).
      */
     void parseSessionID()
@@ -75,10 +75,21 @@ class MessageParser : public Message
         this->parseddata["id"] = id;
     }
 
+    void parseSessionId(const BYTE *sessionId)
+    {
+        BASE64 encodedSessionId = 0;
+        CRYPTO::base64_encode(sessionId, SESSION_ID_SIZE, &encodedSessionId);
+
+        this->parseddata["id"] = encodedSessionId;
+
+        delete[] encodedSessionId;
+        encodedSessionId = 0;
+    }
+
     /**
      * @brief Perform decryption on message payload and call parseNextAddress method
      * in order to parse next address
-     * 
+     *
      * @param ctx AES context used for decryption
      * @return int 0 if success, -1 if failure
      */
@@ -86,37 +97,10 @@ class MessageParser : public Message
 
     /**
      * @brief Parse plaintext key value data
-     * 
+     *
      * @param data Data to be parsed
      */
     void parse(const CHAR *data);
-
-    /**
-     * @brief Decrypt session key from handshake message
-     * 
-     * @param rsactx Local initialized RSA context used for decryption
-     * @param aesctx AES context to be initialized with decrypted session key
-     * @return int 0 if success, -1 if failure
-     */
-    int handshakeDecryptSessionKey(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
-
-    /**
-     * @brief Decrypt client public key from handhsake message
-     * 
-     * @param aesctx Initialized AES context for decryption
-     * @param rsactx RSA context to be initialized with decrypted public key for 
-     * signature verification
-     * @return int 0 if success, -1 if failure
-     */
-    int handshakeDecryptPubkey(AES_CRYPTO aesctx, RSA_CRYPTO rsactx);
-
-    /**
-     * @brief Perform message signature verification
-     * 
-     * @param rsactx Initialized RSA context for to be used for verification
-     * @return int 0 if success, -1 if failure.
-     */
-    int messageVerifySignature(RSA_CRYPTO rsactx);
 
 public:
     MessageParser() : Message(){};
@@ -133,7 +117,7 @@ public:
 
     /**
      * @brief Read payload size from message byte array representation
-     * 
+     *
      * @param data Byte array containing message to read from
      * @return SIZE Message payload size
      */
@@ -150,10 +134,10 @@ public:
 
     /**
      * @brief Update object with provided data. This method overrides all existing data
-     * 
+     *
      * @param data Byte array representing a message
      * @param datalen Messag data size
-     * @return SIZE Number of bytes read 
+     * @return SIZE Number of bytes read
      * (if more data than required was passed, the rest is ignored)
      */
     SIZE update(const BYTE *data, SIZE datalen)
@@ -165,8 +149,8 @@ public:
 
     /**
      * @brief Get the required bytes to complete the message
-     * 
-     * @return SIZE 
+     *
+     * @return SIZE
      */
     SIZE getRequiredSize() const
     {
@@ -176,7 +160,7 @@ public:
     /**
      * @brief Append provided data to existing payload. If more data than required
      * id passed, the rest is ignored
-     * 
+     *
      * @param data Data to be appended
      * @param datalen Size of data to be appended
      * @return SIZE Number of bytes appended
@@ -194,8 +178,8 @@ public:
 
     /**
      * @brief Get the Payload Size read from message header
-     * 
-     * @return SIZE 
+     *
+     * @return SIZE
      */
     SIZE getPayloadSize() const
     {
@@ -208,9 +192,9 @@ public:
     }
 
     /**
-     * @brief Get the Actual Payload Size. The object can contain more or 
+     * @brief Get the Actual Payload Size. The object can contain more or
      * less bytes than required
-     * 
+     *
      * @return SIZE real size of message payload in bytes
      */
     SIZE getActualPayloadSize() const
@@ -220,30 +204,27 @@ public:
 
     const std::string &getParsedId() { return this->parseddata["id"]; }
 
-    const std::string &getParsedAddress() { return this->parseddata["address"]; }
-
     const std::string &getParsedNextAddress() { return this->parseddata["next"]; }
-
-    const std::string &getParsedPubkey() { return this->parseddata["pubkey"]; }
 
     bool parsedIdExists() const { return this->keyExists("id"); }
 
-    bool parsedAddressExists() const { return this->keyExists("address"); }
-
     bool parsedNextAddressExists() const { return this->keyExists("next"); }
-
-    bool parsedPubkeyExists() const { return this->keyExists("pubkey"); }
 
     bool isComplete() const
     {
-        return this->getPayloadSize() and not this->getRequiredSize();
+        if(this->hasType(MESSAGE_INITIAL_STATE))
+        {
+            return false;
+        }
+
+        return not this->getRequiredSize();
     }
 
     /**
      * @brief Removes one encryption layer. This method internally calls parseSessionId
-     * and parseNextAddress. When an encryption layer is removed, session ID and 
+     * and parseNextAddress. When an encryption layer is removed, session ID and
      * message next destination will be parsed
-     * 
+     *
      * @param nodes Pointer to nodes map used to lookup for required NetworkNode structure
      * for decryption. Every NetworkNode structure contain its own initialized AES context
      * used for decryption
@@ -253,19 +234,28 @@ public:
 
     /**
      * @brief Removes one encryption layer. This method internally calls parseSessionId
-     * and parseNextAddress. When an encryption layer is removed, session ID and 
+     * and parseNextAddress. When an encryption layer is removed, session ID and
      * message next destination will be parsed
-     * 
-     * @param conn Pointer to Connection structure to lookup for 
+     *
+     * @param conn Pointer to Connection structure to lookup for
      * session with corresponding ID. Every session contain an initialized AES context
      * for decryption
      * @return int 0 if success, -1 if failure
      */
     int removeEncryptionLayer(Connection *conn);
 
-    int handshake(RSA_CRYPTO rsactx, NetworkNode *route);
+    int handshakePhaseOneRequest(RSA_CRYPTO rsadecrctx, AES_CRYPTO ctx, std::string &pubkeypem) const;
 
-    int handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx);
+    int handshakePhaseOneResponse(AES_CRYPTO aesctx, BYTES *sessionId, BYTES *test) const;
+
+    int handshakePhaseTwoRequest(RSA_CRYPTO rsaverifctx, const BYTE *sessionId, const BYTE *test) const;
+
+    int handshakePhaseTwoResponse() const
+    {
+        return this->hasType(MESSAGE_HANDSHAKE_COMPLETE) ? 0 : -1;
+    }
+
+    int addSessionMessage(RSA_CRYPTO decrctx, BYTES *sessionId, BYTES *sessionKey);
 
     void parse() { this->parse((const CHAR *)this->getPayloadPtr()); }
 

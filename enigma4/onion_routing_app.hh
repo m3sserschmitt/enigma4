@@ -9,8 +9,6 @@
 
 #include "../net/connection.hh"
 
-#include "network_bridge.hh"
-
 
 class OnionRoutingApp : public App
 {
@@ -24,7 +22,7 @@ class OnionRoutingApp : public App
 
     static std::map<std::string, Connection *> localConnections;
 
-    static NetworkBridge *networkBridge;
+    // static NetworkBridge *networkBridge;
 
     OnionRoutingApp(const std::string &pubkey_file, const std::string &privkey_file);
     
@@ -52,6 +50,10 @@ class OnionRoutingApp : public App
      */
     static int setupSession(MessageParser &mp, Connection *conn);
 
+    static int handshakePhaseOne(Connection *conn, BYTES *sessionKey, BYTES *sessionId, BYTES *test, std::string &pubkeypem);
+
+    static int handshakePhaseTwo(Connection *conn, const BYTE *sessionId, const BYTE *test, const std::string &pubkeypem);
+
     /**
      * @brief Checks if message is a handshake. If so, then performs required operations in order
      * to set session ID, client address, encryption keys etc.
@@ -60,9 +62,32 @@ class OnionRoutingApp : public App
      * @param conn Connection to be set.
      * @return int 0 if success, -1 if failure.
      */
-    static int tryHandshake(MessageParser &mp, Connection *conn);
+    static int doHandshake(Connection *conn);
+
+    static int addSession(MessageParser &mp, Connection *conn);
     
-    static int action(MessageParser &mp, Connection *conn);
+    static int removeSession(MessageParser &mp, Connection *conn)
+    {
+        if(not mp.isExitSignal())
+        {
+            return 1;
+        }
+
+        if(not mp.parsedIdExists())
+        {
+            return -1;
+        }
+
+        std::string session_id = mp.getParsedId();
+
+        INFO("EXIT received for session ID: ", session_id);
+        conn->cleanupSession(session_id);
+        SUCCESS("Session with ID ", session_id, " erased.");
+
+        return 0;
+    }
+
+    static int processMessage(MessageParser &mp, Connection *conn);
 
     /**
      * @brief Forward message to next server.
@@ -114,11 +139,11 @@ public:
      * 
      * @param networkBridge NetworkBridge Object to be used for remote connections.
      */
-    void attachNetworkBridge(NetworkBridge *networkBridge)
-    {
-        this->networkBridge = networkBridge;
-        this->networkBridge->onIncomingMessage(forwardMessage);
-    }
+    // void attachNetworkBridge(NetworkBridge *networkBridge)
+    // {
+    //     this->networkBridge = networkBridge;
+    //     this->networkBridge->onIncomingMessage(forwardMessage);
+    // }
 
     /**
      * @brief Connects to all addresses from netfile. The netfile must contain

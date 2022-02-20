@@ -5,6 +5,7 @@ enum MessageConst
 {
     MESSAGE_ENC_PUBKEY_SIZE = 512,
     SESSION_KEY_SIZE = 32,
+    HANDSHAKE_TEST_PHRASE_SIZE = 32,
     SESSION_ID_SIZE = 16,
     ENCODED_SESSION_ID_SIZE = 24,
 
@@ -26,13 +27,14 @@ enum MessageConst
 
 enum MessageType
 {
-    MESSAGE_NULL_TYPE       = 0b00000000,
-    MESSAGE_HANDSHAKE       = 0b00000001,
-
-    MESSAGE_ENC_AES         = 0b00000010,
-    MESSAGE_ENC_RSA         = 0b00000100,
-
-    MESSAGE_EXIT            = 0b00001000
+    MESSAGE_INITIAL_STATE           = 0b00000000,
+    MESSAGE_HANDSHAKE_PHASE_ONE     = 0b00000001,
+    MESSAGE_HANDSHAKE_PHASE_TWO     = 0b00000010,
+    MESSAGE_HANDSHAKE_COMPLETE      = 0b00000100,
+    MESSAGE_ADD_SESSION             = 0b00001000,
+    MESSAGE_ENC_AES                 = 0b00010000,
+    MESSAGE_ENC_RSA                 = 0b00100000,
+    MESSAGE_EXIT                    = 0b10000000
 };
 
 #endif

@@ -1,6 +1,5 @@
 #include "tls_server.hh"
 #include "onion_routing_app.hh"
-#include "network_bridge.hh"
 
 #include "../util/cmd.hh"
 #include "../util/debug.hh"
@@ -54,15 +53,14 @@ int main(int argc, char **argv)
 
     
     OnionRoutingApp &app = OnionRoutingApp::createApp(pubkey, privkey);
-    NetworkBridge &networkBridge = NetworkBridge::createNetworkBridge(pubkey, privkey);
+    //NetworkBridge &networkBridge = NetworkBridge::createNetworkBridge(pubkey, privkey);
 
     TlsServer *server = new TlsServer(host, port);
     
     server->useCertificateFile(certificateFile);
     server->usePrivateKeyFile(privkey);
 
-
-    app.attachNetworkBridge(&networkBridge);
+    //app.attachNetworkBridge(&networkBridge);
     server->attachApp(&app);
 
     const char *netfile = getCmdOption(argv, argc, "-netfile");

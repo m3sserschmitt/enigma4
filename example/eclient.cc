@@ -15,11 +15,18 @@ void gen_keys()
     CRYPTO::RSA_generate_keys("client_public2.pem", "client_private2.pem", 4096, 0, 0, 0, 0);
 }
 
-int printMessageContent(MessageParser &mp)
+void printMessageContent(const BYTE *data, SIZE datalen)
 {
-    cout << "New message received:" << mp.getPayload() << "\n";
+    BYTES message = new BYTE[datalen + 1];
+    memcpy(message, data, datalen);
 
-    return 0;
+    message[datalen] = 0;
+
+    cout << "New message received (" << datalen << " bytes): " << message << "\n";
+
+    delete[] message;
+    message = 0;
+    
 }
 
 int main(int argc, char **argv)
@@ -65,6 +72,7 @@ int main(int argc, char **argv)
     }
 
     cout << "[+] Connection status: " << client.createConnection(tokens[0], tokens[1], tokens[2]) << "\n";
+    client.startListener();
 
     string last_address = client.getServerAddress();
     cout << "[+] Server address: " << last_address << "\n";

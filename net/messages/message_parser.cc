@@ -38,7 +38,7 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
 {
     const int acceptedMessageTypes = MESSAGE_ENC_AES | MESSAGE_EXIT;
 
-    if (not this->hasMessageType(acceptedMessageTypes))
+    if (not this->hasAtLeastOneType(acceptedMessageTypes))
     {
         return -1;
     }
@@ -67,7 +67,7 @@ int MessageParser::removeEncryptionLayer(NodesMap *nodes)
 
     NetworkNode *node = nodes->operator[](getParsedId());
 
-    if(not node)
+    if (not node)
     {
         return -1;
     }
@@ -96,131 +96,147 @@ int MessageParser::removeEncryptionLayer(Connection *conn)
     return this->decrypt(ctx);
 }
 
-int MessageParser::handshakeDecryptSessionKey(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
+int MessageParser::handshakePhaseOneRequest(RSA_CRYPTO rsadecrctx, AES_CRYPTO ctx, std::string &pubkeypem) const
 {
-    BYTES decr = 0;
-    BASE64 sessionID = new CHAR[ENCODED_SESSION_ID_SIZE + 1];
-
-    int decrlen;
-
     int ret = 0;
 
-    if ((decrlen = CRYPTO::RSA_decrypt(rsactx, this->getPayloadPtr(), MESSAGE_ENC_PUBKEY_SIZE, &decr)) < 0)
+    BYTES decrkey = 0;
+    int decrkeylen;
+
+    BYTES decrpubkey = 0;
+
+    BYTES encrkeyptr = this->getPayloadPtr();
+
+    if ((decrkeylen = CRYPTO::RSA_decrypt(rsadecrctx, encrkeyptr, MESSAGE_ENC_PUBKEY_SIZE, &decrkey)) < 0 || decrkeylen != SESSION_KEY_SIZE)
     {
         ret = -1;
         goto cleanup;
     }
 
-    // first 16 bytes represent session ID;
-    CRYPTO::base64_encode(decr, SESSION_ID_SIZE, &sessionID);
-    this->parseddata.insert(pair<string, string>("id", sessionID));
-
-    // last 32 bytes represent session key;
-    if (CRYPTO::AES_setup_key(decr + SESSION_ID_SIZE, SESSION_KEY_SIZE, aesctx) < 0)
+    if (CRYPTO::AES_setup_key(decrkey, decrkeylen, ctx) < 0)
     {
         ret = -1;
         goto cleanup;
     }
 
-    if(CRYPTO::AES_init_ctx(ENCRYPT, aesctx) < 0)
+    if (CRYPTO::AES_init_ctx(DECRYPT, ctx) < 0 || CRYPTO::AES_init_ctx(ENCRYPT, ctx) < 0)
     {
         ret = -1;
         goto cleanup;
     }
 
-    if(CRYPTO::AES_init_ctx(DECRYPT, aesctx) < 0)
+    if (CRYPTO::AES_auth_decrypt(ctx, encrkeyptr + MESSAGE_ENC_PUBKEY_SIZE, this->getPayloadSize() - MESSAGE_ENC_PUBKEY_SIZE, &decrpubkey) < 0)
     {
         ret = -1;
         goto cleanup;
     }
+
+    pubkeypem = (PLAINTEXT)decrpubkey;
 
 cleanup:
-    delete[] decr;
-    decr = 0;
+    delete[] decrpubkey;
+    decrpubkey = 0;
+
+    delete[] decrkey;
+    decrkey = 0;
 
     return ret;
 }
 
-int MessageParser::handshakeDecryptPubkey(AES_CRYPTO aesctx, RSA_CRYPTO rsactx)
+int MessageParser::handshakePhaseOneResponse(AES_CRYPTO aesctx, BYTES *sessionId, BYTES *test) const
 {
-    BYTES pubkey = 0;
-    SIZE encrlen = this->getPayloadSize() - 2 * MESSAGE_ENC_PUBKEY_SIZE;
-    int decrlen;
-
-    if ((decrlen = CRYPTO::AES_auth_decrypt(aesctx, this->getPayloadPtr() + MESSAGE_ENC_PUBKEY_SIZE, encrlen, &pubkey)) < 0)
+    if (not this->hasType(MESSAGE_HANDSHAKE_PHASE_ONE | MESSAGE_ENC_AES))
     {
-        delete[] pubkey;
         return -1;
     }
 
-    pubkey[decrlen] = 0;
-    this->parse((const CHAR *)pubkey);
+    *sessionId or (*sessionId = new BYTE[SESSION_ID_SIZE + 1]);
+    *test or (*test = new BYTE[HANDSHAKE_TEST_PHRASE_SIZE + 1]);
 
-    delete[] pubkey;
-    string pubkey_hexdigest;
-
-    if (this->parsedPubkeyExists())
+    if (not *sessionId or not *test)
     {
-        const string &parsed_pubkey_pem = this->getParsedPubkey();
-
-        CRYPTO::RSA_init_key(parsed_pubkey_pem, 0, 0, PUBLIC_KEY, rsactx);
-        KEY_UTIL::getKeyHexDigest(this->getParsedPubkey(), pubkey_hexdigest);
-
-        (*this)["address"] = pubkey_hexdigest;
+        return -1;
     }
 
-    return 0;
+    int ret = 0;
+
+    BYTES data = 0;
+    int datalen;
+
+    if (CRYPTO::AES_auth_decrypt(aesctx, this->getPayloadPtr(), this->getPayloadSize(), &data) < 0)
+    {
+        ret = -1;
+        goto cleanup;
+    }
+
+    memcpy(*sessionId, data, SESSION_ID_SIZE);
+    memcpy(*test, data + SESSION_ID_SIZE, HANDSHAKE_TEST_PHRASE_SIZE);
+
+cleanup:
+    delete[] data;
+    data = 0;
+
+    return ret;
 }
 
-int MessageParser::messageVerifySignature(RSA_CRYPTO ctx)
+int MessageParser::handshakePhaseTwoRequest(RSA_CRYPTO rsaverifctx, const BYTE *sessionId, const BYTE *test) const
 {
-    if (CRYPTO::RSA_init_ctx(ctx, VERIFY) < 0)
+    if (not sessionId or not test)
     {
         return -1;
     }
 
-    BYTES signature_ptr = this->getPayloadPtr() + this->getPayloadSize() - MESSAGE_ENC_PUBKEY_SIZE;
-    SIZE datasize = this->getDatalen() - MESSAGE_ENC_PUBKEY_SIZE;
+    BYTES payloadptr = this->getPayloadPtr();
+
+    if (memcmp(sessionId, payloadptr, SESSION_ID_SIZE) != 0)
+    {
+        return -1;
+    }
 
     bool authentic;
-    if (CRYPTO::RSA_verify(ctx, signature_ptr, MESSAGE_ENC_PUBKEY_SIZE, this->getData(), datasize, authentic) < 0)
+    if (CRYPTO::RSA_verify(rsaverifctx, payloadptr + SESSION_ID_SIZE, MESSAGE_ENC_PUBKEY_SIZE, test, HANDSHAKE_TEST_PHRASE_SIZE, authentic) < 0 or not authentic)
     {
         return -1;
     }
-
-    return authentic ? 0 : -1;
-}
-
-int MessageParser::handshake(RSA_CRYPTO rsactx, AES_CRYPTO aesctx)
-{
-    if (not this->isHandshake())
-    {
-        return -1;
-    }
-
-    if (this->handshakeDecryptSessionKey(rsactx, aesctx) < 0)
-    {
-        return -1;
-    }
-
-    if (this->getPayloadSize() > 2 * MESSAGE_ENC_PUBKEY_SIZE)
-    {
-        RSA_CRYPTO verify_ctx = CRYPTO::RSA_CRYPTO_new();
-
-        if (this->handshakeDecryptPubkey(aesctx, verify_ctx) < 0)
-        {
-            return -1;
-        }
-
-        if (this->messageVerifySignature(verify_ctx) < 0)
-        {
-            return -1;
-        }
-
-        CRYPTO::RSA_CRYPTO_free(verify_ctx);
-    }
-
-    this->parseSessionID();
 
     return 0;
+}
+
+int MessageParser::addSessionMessage(RSA_CRYPTO decrctx, BYTES *sessionId, BYTES *sessionKey)
+{
+    if (not this->hasType(MESSAGE_ADD_SESSION | MESSAGE_ENC_RSA))
+    {
+        return -1;
+    }
+
+    *sessionId or (*sessionId = new BYTE[SESSION_ID_SIZE + 1]);
+    *sessionKey or (*sessionKey = new BYTE[SESSION_KEY_SIZE + 1]);
+
+    if(not *sessionId or not *sessionKey)
+    {
+        return -1;
+    }
+
+    int ret = 0;
+
+    BYTES decrdata = 0;
+    int decrlen;
+
+    if ((decrlen = CRYPTO::RSA_decrypt(decrctx, this->getPayloadPtr(), MESSAGE_ENC_PUBKEY_SIZE, &decrdata)) < 0)
+    {
+        ret = -1;
+        goto cleanup;
+    }
+
+    memcpy(*sessionId, decrdata, SESSION_ID_SIZE);
+    memcpy(*sessionKey, decrdata + SESSION_ID_SIZE, SESSION_KEY_SIZE);
+
+    this->parseSessionId(*sessionId);
+
+cleanup:
+    delete[] decrdata;
+
+    decrdata = 0;
+
+    return ret;
 }

@@ -34,109 +34,138 @@ int MessageBuilder::encrypt(NetworkNode *route)
     return this->encrypt(route->getAES());
 }
 
-int MessageBuilder::handshakeSetupSessionKey(NetworkNode *route)
+int MessageBuilder::handshakePhaseOneRequest(const BYTE *sessionKey, const std::string &pubkeypem, RSA_CRYPTO rsaencrctx, AES_CRYPTO ctx)
 {
-    BYTES sessionIdAndKey = new BYTE[SESSION_ID_SIZE + SESSION_KEY_SIZE + 1];
-    BYTES ptr = sessionIdAndKey;
-
-    BYTES encr = 0;
-    int encrlen;
-
     int ret = 0;
 
-    // first 16 bytes represent session ID;
-    memcpy(ptr, route->getId(), SESSION_ID_SIZE);
-    ptr += SESSION_ID_SIZE;
+    BYTES encrkey = 0;
+    int encrkeylen;
 
-    // last 32 bytes represent session key;
-    if (CRYPTO::AES_read_key(route->getAES(), SESSION_KEY_SIZE, &ptr) < 0)
+    BYTES encrpubkey = 0;
+    int encrpubkeylen = 0;
+
+    if ((encrkeylen = CRYPTO::RSA_encrypt(rsaencrctx, sessionKey, SESSION_KEY_SIZE, &encrkey)) < 0)
     {
         ret = -1;
         goto cleanup;
     }
 
-    if ((encrlen = CRYPTO::RSA_encrypt(route->getRSA(), sessionIdAndKey, SESSION_KEY_SIZE + SESSION_ID_SIZE, &encr)) < 0)
+    if((encrpubkeylen = CRYPTO::AES_auth_encrypt(ctx, (const BYTE *)pubkeypem.c_str(), pubkeypem.size(), &encrpubkey)) < 0)
     {
         ret = -1;
         goto cleanup;
     }
 
-    this->appendPayloadEnd(encr, encrlen);
+    this->appendPayloadEnd(encrkey, encrkeylen);
+    this->appendPayloadEnd(encrpubkey, encrpubkeylen);
+
+    this->setMessageType(MESSAGE_HANDSHAKE_PHASE_ONE | MESSAGE_ENC_RSA | MESSAGE_ENC_AES);
 
 cleanup:
-    delete[] sessionIdAndKey;
-    delete[] encr;
+    delete[] encrkey;
+    encrkey = 0;
 
-    sessionIdAndKey = 0;
-    encr = 0;
+    delete[] encrpubkey;
+    encrpubkey = 0;
 
     return ret;
 }
 
-int MessageBuilder::handshakeSetupPubkey(AES_CRYPTO ctx, const string &pubkeypem)
+int MessageBuilder::handshakePhaseTwoRequest(const BYTE *sessionId, const BYTE *test, RSA_CRYPTO signctx)
 {
+    int ret = 0;
+
+    BYTES signature = 0;
+    int signlen;
+
+    if((signlen = CRYPTO::RSA_sign(signctx, test, HANDSHAKE_TEST_PHRASE_SIZE, &signature)) < 0)
+    {
+        ret = -1;
+        goto cleanup;
+    }
+
+    this->appendPayloadEnd(sessionId, SESSION_ID_SIZE);
+    this->appendPayloadEnd(signature, signlen);
+
+    this->setMessageType(MESSAGE_HANDSHAKE_PHASE_TWO | MESSAGE_ENC_RSA);
+    
+cleanup:
+    delete[] signature;
+    signature = 0;
+
+    return ret;
+}
+
+int MessageBuilder::handshakePhaseOneResponse(const BYTE *sessionId, const BYTE *test, AES_CRYPTO aesctx)
+{
+    int ret = 0;
+
+    int datalen = SESSION_ID_SIZE + HANDSHAKE_TEST_PHRASE_SIZE;
+    BYTES data = new BYTE[datalen + 1];
+
+    BYTES encrdata = 0;
+    int encrdatalen;
+
+    memcpy(data, sessionId, SESSION_ID_SIZE);
+    memcpy(data + SESSION_ID_SIZE, test, HANDSHAKE_TEST_PHRASE_SIZE);
+
+    if((encrdatalen = CRYPTO::AES_auth_encrypt(aesctx, data, datalen, &encrdata)) < 0)
+    {
+        ret = -1;
+        goto cleanup;
+    }
+
+    this->appendPayloadEnd(encrdata, encrdatalen);
+
+    this->setMessageType(MESSAGE_HANDSHAKE_PHASE_ONE | MESSAGE_ENC_AES);
+
+cleanup:
+    delete[] data;
+    delete[] encrdata;
+
+    data = 0;
+    encrdata = 0;
+
+    return ret;
+}
+
+int MessageBuilder::addSessionMessage(const BYTE *sessionId, const BYTE *sessionKey, RSA_CRYPTO rsaencrctx)
+{
+    if(not sessionId or not sessionKey)
+    {
+        return -1;
+    }
+
+    BYTES data = new BYTE[SESSION_ID_SIZE + SESSION_KEY_SIZE + 1];
+
+    if(not data)
+    {
+        return -1;
+    }
+
+    memcpy(data, sessionId, SESSION_ID_SIZE);
+    memcpy(data + SESSION_ID_SIZE, sessionKey, SESSION_KEY_SIZE);
+
+    int ret = 0;
+
     BYTES encrdata = 0;
     int encrlen;
 
-    string data = "pubkey: " + pubkeypem;
-
-    if ((encrlen = CRYPTO::AES_auth_encrypt(ctx, (const BYTE *)data.c_str(), data.size(), &encrdata)) < 0)
+    if((encrlen = CRYPTO::RSA_encrypt(rsaencrctx, data, SESSION_ID_SIZE + SESSION_KEY_SIZE, &encrdata)) < 0)
     {
-        delete[] encrdata;
-        return -1;
+        ret = -1;
+        goto cleanup;
     }
 
     this->appendPayloadEnd(encrdata, encrlen);
 
-    return 0;
-}
+    this->setMessageType(MESSAGE_ADD_SESSION | MESSAGE_ENC_RSA);
 
-int MessageBuilder::signMessage(RSA_CRYPTO ctx)
-{
-    BYTES signature = 0;
-    int signlen;
+cleanup:
+    delete[] encrdata;
+    encrdata = 0;
 
-    SIZE current_datalen = this->getDatalen();
-    this->increasePayloadSize(MESSAGE_ENC_PUBKEY_SIZE);
-
-    if ((signlen = CRYPTO::RSA_sign(ctx, this->getData(), current_datalen, &signature)) < 0)
-    {
-        delete[] signature;
-        return -1;
-    }
-
-    this->decreasePayloadSize(MESSAGE_ENC_PUBKEY_SIZE);
-    this->appendPayloadEnd(signature, signlen);
-
-    delete[] signature;
-    return 0;
-}
-
-int MessageBuilder::handshake(NetworkNode *route, RSA_CRYPTO signrsactx, const string &pubkeypem)
-{
-    if (this->handshakeSetupSessionKey(route) < 0)
-    {
-        return -1;
-    }
-
-    if (pubkeypem.size())
-    {
-        if (this->handshakeSetupPubkey(route->getAES(), pubkeypem) < 0)
-        {
-            return -1;
-        }
-
-        this->setMessageType(MESSAGE_HANDSHAKE);
-
-        if (this->signMessage(signrsactx) < 0)
-        {
-            return -1;
-        }
-    }
-
-    this->setMessageType(MESSAGE_HANDSHAKE);
-
-    return 0;
+    return ret;
 }
 
 MessageBuilder &MessageBuilder::operator=(const MessageBuilder &mb)

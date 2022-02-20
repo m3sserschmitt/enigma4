@@ -28,7 +28,6 @@ target_link_libraries(client net)
 
 add_executable(enigma4 
 enigma4/server.cc
-enigma4/network_bridge.cc
 enigma4/onion_routing_app.cc
 enigma4/main.cc
 )

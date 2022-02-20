@@ -137,12 +137,14 @@ public:
         this->setPayload(data.c_str());
     }
 
-    bool isHandshake() const { return this->hasMessageType(MESSAGE_HANDSHAKE); }
+    bool isHandshake() const { return this->hasAtLeastOneType(MESSAGE_HANDSHAKE_PHASE_ONE | MESSAGE_HANDSHAKE_PHASE_TWO); }
+
+    bool isAddSessionMessage() const { return this->hasAtLeastOneType(MESSAGE_ADD_SESSION); }
 
     /**
      * @brief Set the Message Type. It overrides the byte representing message type with
      * value provided into messageType parameter.
-     * 
+     *
      * @param messageType Message type to be set
      */
     void setMessageType(int messageType)
@@ -154,8 +156,8 @@ public:
     /**
      * @brief Add message type. Previous value is not overriden, istead it uses "|" (or) bitwise operator to add
      * new type.
-     * 
-     * @param messageType Message type to be added 
+     *
+     * @param messageType Message type to be added
      */
     void addMessageType(int messageType)
     {
@@ -165,27 +167,33 @@ public:
 
     /**
      * @brief Check if message has specified type.
-     * 
+     *
      * @param messageType Message type to be checked
      * @return true If message has specified type.
      * @return false If message does not have specified type
      */
-    bool hasMessageType(int messageType) const
+    bool hasAtLeastOneType(int messageType) const
     {
         BYTES messageTypePtr = this->getMessageTypePtr();
         return ((*messageTypePtr) & messageType) != 0;
     }
 
+    bool hasType(int messageType) const
+    {
+        BYTES messageTypePtr = this->getMessageTypePtr();
+        return messageType == *messageTypePtr;
+    }
+
     /**
      * @brief Check if message has type passed into checkType parameter. If specified type is present, then newType is added,
      * otherwise message type byte is overriden with newType
-     * 
+     *
      * @param checkType Type to be checked
      * @param newType New type to be added / set.
      */
     void addIfPressentOrOverrideMessageType(int checkType, int newType)
     {
-        if (this->hasMessageType(checkType))
+        if (this->hasAtLeastOneType(checkType))
         {
             this->addMessageType(newType);
         }
@@ -202,7 +210,7 @@ public:
 
     bool isExitSignal() const
     {
-        return this->hasMessageType(MESSAGE_EXIT);
+        return this->hasAtLeastOneType(MESSAGE_EXIT);
     }
 
     const BYTE *getData(SIZE &datalen) const

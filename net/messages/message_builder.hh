@@ -31,10 +31,6 @@ class MessageBuilder : public Message
 
     int encrypt(AES_CRYPTO ctx);
 
-    int handshakeSetupSessionKey(NetworkNode *route);
-    int handshakeSetupPubkey(AES_CRYPTO ctx, const std::string &pubkeypem);
-    int signMessage(RSA_CRYPTO ctx);
-
 public:
     MessageBuilder() : Message(){};
     MessageBuilder(const CHAR *data) : Message(data) {}
@@ -51,7 +47,8 @@ public:
             this->appendPayloadBeg(address, MESSAGE_ADDRESS_SIZE);
         }
     }
-    void set_id(const BYTE *id)
+    
+    void setId(const BYTE *id)
     {
         if (id)
         {
@@ -61,7 +58,37 @@ public:
 
     int encrypt(NetworkNode *route);
 
-    int handshake(NetworkNode *route, RSA_CRYPTO signrsactx = 0, const std::string &pubkeypem = "");
+    /**
+     * @brief Create Phase One hanshake messagage
+     * 
+     * @param sessionKey Session key to be used for encryption
+     * @param rsaencrctx RSA context for session key encryption
+     * @return int 0 for success, -1 if failure
+     */
+    int handshakePhaseOneRequest(const BYTE *sessionKey, const std::string &pubkeypem, RSA_CRYPTO rsaencrctx, AES_CRYPTO ctx);
+
+    int handshakePhaseOneResponse(const BYTE *sessionId, const BYTE *test, AES_CRYPTO aesctx);
+
+    /**
+     * @brief Create Phase Two handshake message
+     * 
+     * @param sessionId Session id returned from server in handshake phase one
+     * @param test Test phrase used for authentication returned from server in hanshake phase one
+     * @param signctx RSA context used for test phrase signing
+     * @return int 0 if success, -1 if failure;
+     */
+    int handshakePhaseTwoRequest(const BYTE *sessionId, const BYTE *test, RSA_CRYPTO signctx);
+    
+    int handshakePhaseTwoResponse()
+    {
+        this->setMessageType(MESSAGE_HANDSHAKE_COMPLETE);
+
+        return 0;
+    }
+
+    int addSessionMessage(const BYTE *sessionId, const BYTE *sessionKey, RSA_CRYPTO rsaencrctx);
+
+    int performGuardHandhsake(NetworkNode *guardNode);
 
     MessageBuilder &operator=(const MessageBuilder &mb);
 };

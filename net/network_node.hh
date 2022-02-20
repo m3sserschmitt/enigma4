@@ -2,14 +2,15 @@
 #define ROUTE_HH
 
 #include "../libcryptography/include/cryptography.hh"
-#include "../types/crypto_context.hh"
 #include "../util/util.hh"
+#include "./messages/message_const.hh"
 
 #include <string.h>
 
 class NetworkNode
 {
-    CryptoContext cryptoContext;
+    RSA_CRYPTO rsactx;
+    AES_CRYPTO aesctx;
 
     BYTES keyDigest;
     PLAINTEXT keyHexDigest;
@@ -35,6 +36,9 @@ public:
         memset(this->keyDigest, 0, 32 + 1);
         memset(this->keyHexDigest, 0, 64 + 1);
         memset(this->id, 0, 16 + 1);
+
+        this->rsactx = CRYPTO::RSA_CRYPTO_new();
+        this->aesctx = CRYPTO::AES_CRYPTO_new();
     }
     
     ~NetworkNode()
@@ -46,25 +50,28 @@ public:
         this->keyDigest = 0;
         this->keyHexDigest = 0;
         this->id = 0;
+
+        CRYPTO::RSA_CRYPTO_free(this->rsactx);
+        CRYPTO::AES_CRYPTO_free(this->aesctx);
     }
 
-    AES_CRYPTO getAES() { return this->cryptoContext.getAES(); }
+    AES_CRYPTO getAES() { return this->aesctx; }
     
-    RSA_CRYPTO getRSA() { return this->cryptoContext.getRSA(); }
+    RSA_CRYPTO getRSA() { return rsactx; }
 
-    int aesctxDuplicate(NetworkNode *node)
+    int aesctxDuplicate(const _AES_CRYPTO *aesctx)
     {
-        return CRYPTO::AES_ctx_dup(this->cryptoContext.getAES(), node->cryptoContext.getAES());
-    }
-
-    int aesctxDuplicate(CryptoContext *cryptoContext)
-    {
-        return CRYPTO::AES_ctx_dup(this->cryptoContext.getAES(), cryptoContext->getAES());
+        return CRYPTO::AES_ctx_dup(this->aesctx, aesctx);
     }
     
     int pubkeyInit(const std::string &pubkeypem)
     {
-        if (this->cryptoContext.rsaInitPubkey(pubkeypem) < 0)
+        if (CRYPTO::RSA_init_key(pubkeypem, 0, 0, PUBLIC_KEY, this->rsactx) < 0)
+        {
+            return -1;
+        }
+
+        if(CRYPTO::RSA_init_ctx(this->rsactx, ENCRYPT) < 0)
         {
             return -1;
         }
@@ -72,18 +79,73 @@ public:
         KEY_UTIL::getKeyDigest(pubkeypem, &this->keyDigest);
         CRYPTO::hex(this->keyDigest, 32, &this->keyHexDigest);
 
-        return this->cryptoContext.rsaInitEncryption();
+        return 0;
     }
     
     int aesctxInit(const BYTE *key = 0, SIZE keylen = 32)
     {
-        return this->cryptoContext.aesInit(key, keylen);
+        if (key and keylen)
+        {
+            if(CRYPTO::AES_setup_key(key, keylen, this->aesctx) < 0)
+            {
+                return -1;
+            }
+
+            if(CRYPTO::AES_init_ctx(ENCRYPT, this->aesctx) < 0)
+            {
+                return -1;
+            }
+
+            if(CRYPTO::AES_init_ctx(DECRYPT, this->aesctx) < 0)
+            {
+                return -1;
+            }
+
+            return  0;
+        }
+        else
+        {
+            BYTES keyBuffer = 0;
+            int ret = 0;
+
+            if (CRYPTO::rand_bytes(AES_GCM_KEY_SIZE, &keyBuffer) < 0)
+            {
+                ret = -1;
+                goto cleanup;
+            }
+
+            if(CRYPTO::AES_setup_key(keyBuffer, AES_GCM_KEY_SIZE, this->aesctx) < 0)
+            {
+                ret = -1;
+                goto cleanup;
+            }
+
+            if(CRYPTO::AES_init_ctx(ENCRYPT, this->aesctx) < 0)
+            {
+                ret = -1;
+                goto cleanup;
+            }
+
+            if(CRYPTO::AES_init_ctx(DECRYPT, this->aesctx) < 0)
+            {
+                ret = -1;
+                goto cleanup;
+            }
+
+        cleanup:
+            delete[] keyBuffer;
+            keyBuffer = 0;
+
+            return ret;
+        }
+
+        return 0;
     }
 
     const CHAR *encodeKey()
     {
         BYTES key = 0;
-        CRYPTO::AES_read_key(this->cryptoContext.getAES(), 32, &key);
+        CRYPTO::AES_read_key(this->aesctx, 32, &key);
 
         BASE64 base64key = 0;
         CRYPTO::base64_encode(key, 32, &base64key);
@@ -108,6 +170,11 @@ public:
         return CRYPTO::rand_bytes(16, &this->id) < 0 ? -1 : 0;
     }
 
+    int setSessionKey(const BYTE *sessionKey)
+    {
+        return CRYPTO::AES_setup_key(sessionKey, SESSION_KEY_SIZE, this->aesctx);
+    }
+
     const CHAR *encodeId() const
     {
         BASE64 base64id = 0;
@@ -116,7 +183,22 @@ public:
         return base64id;
     }
     
-    const BYTE *getId() { return this->id; }
+    const BYTE *getId() const { return this->id; }
+
+    const BYTE *getSessionKey() 
+    {
+        BYTES sessionKey = 0;
+
+        if(CRYPTO::AES_read_key(this->aesctx, SESSION_KEY_SIZE, &sessionKey) < 0)
+        {
+            delete[] sessionKey;
+            sessionKey = 0;
+
+            return 0;
+        }
+
+        return sessionKey;
+    }
 
     void setPrevious(NetworkNode *previous) { this->previous = previous; }
     
