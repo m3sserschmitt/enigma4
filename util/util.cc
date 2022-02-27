@@ -131,7 +131,7 @@ int KEY_UTIL::BytesKeyFromPEM(string pem, BYTES *byteskey)
     removeFromString(pem, "-----END PUBLIC KEY-----");
     removeFromString(pem, "\n");
 
-    return CRYPTO::base64_decode((BASE64)pem.data(), byteskey);
+    return CRYPTO::base64_decode(pem.c_str(), byteskey);
 }
 
 int KEY_UTIL::getKeyDigest(const string &pem, BYTES *digest)
@@ -159,12 +159,14 @@ int KEY_UTIL::getKeyHexDigest(const string &pem, PLAINTEXT *address)
     if (result < 0)
     {
         delete[] digest;
+        digest = 0;
         return -1;
     }
 
     result = CRYPTO::hex(digest, result, address);
 
     delete[] digest;
+    digest = 0;
 
     return result;
 }
@@ -174,38 +176,13 @@ int KEY_UTIL::getKeyHexDigest(const string &pem, string &address)
     PLAINTEXT buffer = 0;
     int result = getKeyHexDigest(pem, &buffer);
 
+    if(result < 0)
+    {
+        return -1;
+    }
+
     address = buffer;
 
     delete[] buffer;
     return result;
 }
-
-/*
-int get_address(RSA_CRYPTO ctx, string &address)
-{
-    BYTES key = 0;
-    int keylen = CRYPTO::PEM_key_to_DER(ctx, &key);
-
-    if (keylen < 0)
-    {
-        return -1;
-    }
-
-    // compute hash for client public key;
-    PLAINTEXT addr = 0;
-    if (CRYPTO::sha256(key, keylen, &addr) < 0)
-    {
-        return -1;
-    }
-
-    address = addr;
-    delete addr;
-
-    return 0;
-}
-
-int get_address(RSA_CRYPTO ctx, BYTES *out)
-{
-    return CRYPTO::PEM_key_to_DER(ctx, out);
-}
-*/

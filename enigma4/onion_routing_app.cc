@@ -18,7 +18,6 @@ string OnionRoutingApp::pubkey;
 
 std::map<string, Connection *> OnionRoutingApp::localConnections;
 
-//NetworkBridge *OnionRoutingApp::networkBridge = 0;
 
 OnionRoutingApp::OnionRoutingApp(const string &pubkey_file, const string &privkey_file)
 {
@@ -67,14 +66,14 @@ int OnionRoutingApp::joinNetwork(const string &netfile)
         Client *newClient = new TlsClient();
 
         newClient->setClientPublicKeyPEM(OnionRoutingApp::pubkey);
-        newClient->setClientPrivateKey(OnionRoutingApp::privkeyfile);
+        newClient->loadClientPrivateKey(OnionRoutingApp::privkeyfile);
 
         if(newClient->createConnection(tokens[0], tokens[1], tokens[2]) < 0)
         {
             continue;
         }
 
-        Connection *conn = newClient->getConnection();
+        Connection *conn = newClient->getGuardConnection();
 
         conn->setConnectionPeerTypeServer();
         // OnionRoutingApp::localConnections.insert(pair<string, Connection *>(conn->getAddress(), conn));
@@ -311,16 +310,6 @@ int OnionRoutingApp::forwardMessage(MessageParser &mp)
     return next->second->writeData(mp.getData(), mp.getDatalen()) > 0 ? 0 : -1;
 }
 
-static void print_key(const BYTE *key)
-{
-    cout << "==========================\n";
-    for(int i = 0; i < SESSION_KEY_SIZE; i++)
-    {
-        cout << (int) key[i] << " ";
-    }
-    cout << "\n===========================\n";
-}
-
 int OnionRoutingApp::addSession(MessageParser &mp, Connection *conn)
 {
     if(not mp.isAddSessionMessage())
@@ -346,7 +335,7 @@ int OnionRoutingApp::addSession(MessageParser &mp, Connection *conn)
     }
 
     INFO("New session id: ", mp.getParsedId(), "; source address: ", conn->getAddress());
-    print_key(sessionKey);
+    
 cleanup:
     delete[] sessionId;
     delete[] sessionKey;

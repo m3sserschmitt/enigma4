@@ -15,18 +15,28 @@ void gen_keys()
     CRYPTO::RSA_generate_keys("client_public2.pem", "client_private2.pem", 4096, 0, 0, 0, 0);
 }
 
-void printMessageContent(const BYTE *data, SIZE datalen)
+void onMessageReceivedCallback(const BYTE *data, SIZE datalen)
 {
     BYTES message = new BYTE[datalen + 1];
     memcpy(message, data, datalen);
 
     message[datalen] = 0;
 
-    cout << "New message received (" << datalen << " bytes): " << message << "\n";
+    INFO("New message received (", datalen, " bytes): ", message);
 
     delete[] message;
     message = 0;
     
+}
+
+void onSessionSetCallback(const CHAR *sessionId)
+{
+    INFO("New session set: ", sessionId);
+}
+
+void onSessionClearedCallback(const CHAR *sessionId)
+{
+    INFO("EXIT signal received for session id: ", sessionId);
 }
 
 int main(int argc, char **argv)
@@ -57,7 +67,10 @@ int main(int argc, char **argv)
     }
 
     TlsClient client(client_pubkey, client_privkey);
-    client.onIncomingMessage(printMessageContent);
+    
+    client.onMessageReceived(onMessageReceivedCallback);
+    client.onSessionSet(onSessionSetCallback);
+    client.onSessionCleared(onSessionClearedCallback);
 
     cout << "[+] Client address: " << client.getClientHexaddress() << "\n";
 
@@ -74,8 +87,8 @@ int main(int argc, char **argv)
     cout << "[+] Connection status: " << client.createConnection(tokens[0], tokens[1], tokens[2]) << "\n";
     client.startListener();
 
-    string last_address = client.getServerAddress();
-    cout << "[+] Server address: " << last_address << "\n";
+    string last_address = client.getGuardAddress();
+    cout << "[+] Guard address: " << last_address << "\n";
 
     SIZE circuit_length = entries.size();
 
