@@ -15,28 +15,36 @@ void gen_keys()
     CRYPTO::RSA_generate_keys("client_public2.pem", "client_private2.pem", 4096, 0, 0, 0, 0);
 }
 
-void onMessageReceivedCallback(const BYTE *data, SIZE datalen)
+void onMessageReceivedCallback(const BYTE *payload, SIZE size, const CHAR *sessionId, const CHAR *fromAddress, const CHAR *toAddress)
 {
-    BYTES message = new BYTE[datalen + 1];
-    memcpy(message, data, datalen);
+    BYTES message = new BYTE[size + 1];
+    memcpy(message, payload, size);
 
-    message[datalen] = 0;
+    message[size] = 0;
 
-    INFO("New message received (", datalen, " bytes): ", message);
+    NEWLINE();
+    INFO("New message received (", size, " bytes); session id: ", sessionId, "; from: ", fromAddress);
+    INFO("Destination: ", toAddress);
+    INFO("Payload content: ", message);
+    NEWLINE()
 
     delete[] message;
     message = 0;
     
 }
 
-void onSessionSetCallback(const CHAR *sessionId)
+void onSessionSetCallback(const CHAR *sessionId, const CHAR *fromAddress)
 {
-    INFO("New session set: ", sessionId);
+    NEWLINE()
+    INFO("New session set: ", sessionId, " from ", fromAddress);
+    NEWLINE()
 }
 
-void onSessionClearedCallback(const CHAR *sessionId)
+void onSessionClearedCallback(const CHAR *sessionId, const CHAR *fromAddress)
 {
-    INFO("EXIT signal received for session id: ", sessionId);
+    NEWLINE()
+    INFO("EXIT signal received for session id: ", sessionId, " from ", fromAddress);
+    NEWLINE()
 }
 
 int main(int argc, char **argv)

@@ -198,14 +198,14 @@ void *Client::dataListener(void *args)
 
         if (status == MESSAGE_DECRYPTED_SUCCESSFULLY and messageReceivedCallback)
         {
-            messageReceivedCallback(mp.getPayload(), mp.getPayloadSize());
+            messageReceivedCallback(mp.getPayload(), mp.getPayloadSize(), mp.getParsedId().c_str(), "Guard Node", mp.getParsedNextAddress().c_str());
         }
         else if (status == SESSION_SET and newSessionSetCallback)
         {
-            newSessionSetCallback(mp.getParsedId().c_str());
+            newSessionSetCallback(mp.getParsedId().c_str(), "Guard Node");
         } else if(status == SESSION_CLEARED and sessionClearedCallback)
         {
-            sessionClearedCallback(mp.getParsedId().c_str());
+            sessionClearedCallback(mp.getParsedId().c_str(), "Guard Node");
         }
 
         mp.reset();

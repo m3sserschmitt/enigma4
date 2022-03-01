@@ -12,10 +12,7 @@
 #include "../net/sockets/socket.hh"
 
 #include "../types/map_types.hh"
-
-typedef void (*OnMessageReceivedCallback)(const BYTE *, SIZE);
-typedef void (*OnNewSessionSetCallback)(const CHAR *);
-typedef void (*OnSessionClearedCallback)(const CHAR *);
+#include "../types/callbacks.hh"
 
 class Client
 {
