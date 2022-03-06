@@ -8,6 +8,12 @@
 
 int Server::socketBind()
 {
+    // if no port provided, try creating UNIX socket domain server;
+    if(not this->port.size() and this->host.size())
+    {
+        return this->unixSocketBind();
+    }
+
     int reuse_address = 1;
 
     addrinfo *res = new addrinfo;
@@ -79,8 +85,8 @@ int Server::unixSocketBind()
 
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, this->host.c_str(), this->host.size());
-
-    return bind(this->servsock, (sockaddr *)&addr, sizeof(sockaddr_un));
+    size_t len = strlen(addr.sun_path) + sizeof(addr.sun_family);
+    return bind(this->servsock, (sockaddr *)&addr, len);
 }
 
 int Server::acceptClients()

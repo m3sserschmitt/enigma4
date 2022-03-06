@@ -32,16 +32,6 @@ class OnionRoutingApp : public App
     }
 
     /**
-     * @brief Connect to another server in the network.
-     * 
-     * @param host Hostname of foreign host
-     * @param port Port number
-     * @param pubkeyfile Public key of foreign server.
-     * @return int 0 for success, -1 for failure.
-     */
-    int connectPeer(const std::string &host, const std::string &port, const std::string &pubkeyfile);
-
-    /**
      * @brief Set the up session; All required data is extracted from mp object.
      * 
      * @param mp 
@@ -126,24 +116,13 @@ class OnionRoutingApp : public App
 
 public:
     /**
-     * @brief Create a app object
+     * @brief Create app object
      * 
      * @param pubkey_file Path to local public key file in PEM format.
      * @param privkey_file Path to local private key file in PEM format.
      * @return OnionRoutingApp& reference to newly created object.
      */
     static OnionRoutingApp &createApp(const std::string &pubkey_file, const std::string &privkey_file);
-
-    /**
-     * @brief Attach network bridge object used for comunications with remote servers.
-     * 
-     * @param networkBridge NetworkBridge Object to be used for remote connections.
-     */
-    // void attachNetworkBridge(NetworkBridge *networkBridge)
-    // {
-    //     this->networkBridge = networkBridge;
-    //     this->networkBridge->onIncomingMessage(forwardMessage);
-    // }
 
     /**
      * @brief Connects to all addresses from netfile. The netfile must contain
@@ -157,7 +136,7 @@ public:
      * @return int -1 if all connections failed, 1 if some of them failed and 
      * 0 if all connections succeedeed.
      */
-    int joinNetwork(const std::string &netfile);
+    static int joinNetwork(const std::string &netfile);
 
     /**
      * @brief This method is called by Server when a new client connects.

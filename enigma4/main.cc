@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 
     if (not host)
     {
-        WARNING("No host provided; defaulting to localhost.");
+        INFO("No host provided; defaulting to localhost.");
         host = "localhost";
     }
 
@@ -38,29 +38,48 @@ int main(int argc, char **argv)
 
     if (not port)
     {
-        WARNING("No port provided; defaulting to 8080.");
+        INFO("No port provided; defaulting to 8080.");
         port = "8080";
     }
 
     const char *certificateFile = getCmdOption(argv, argc, "-certificate");
 
+    Server *server;
+
     if (not certificateFile)
     {
-        ERROR("No certificate file provided");
+        WARNING("No public certificate file provided.");
+        WARNING("Starting non-TLS server...");
 
-        return EXIT_FAILURE;
+        server = new Server(host, port);
+    }
+    else
+    {
+        INFO("Starting TLS server...");
+
+        server = new TlsServer(host, port);
+
+        if (server->useCertificateFile(certificateFile) < 0)
+        {
+            ERROR("Failed to load certificate file: ", certificateFile);
+
+            return EXIT_FAILURE;
+        }
+
+        SUCCESS("Certificate file successfully loaded: ", certificateFile);
+
+        if(server->usePrivateKeyFile(privkey) < 0)
+        {
+            ERROR("Failed to load private key file: ", privkey);
+
+            return EXIT_FAILURE;
+        }
+
+        SUCCESS("Private key file successfully loaded: ", privkey);
     }
 
-    
     OnionRoutingApp &app = OnionRoutingApp::createApp(pubkey, privkey);
-    //NetworkBridge &networkBridge = NetworkBridge::createNetworkBridge(pubkey, privkey);
 
-    TlsServer *server = new TlsServer(host, port);
-    
-    server->useCertificateFile(certificateFile);
-    server->usePrivateKeyFile(privkey);
-
-    //app.attachNetworkBridge(&networkBridge);
     server->attachApp(&app);
 
     const char *netfile = getCmdOption(argv, argc, "-netfile");
@@ -81,7 +100,9 @@ int main(int argc, char **argv)
     }
 
     INFO("Local address: ", app.getAddress());
-    INFO("Listening on ", host, ":", port);
+    SUCCESS("Listening on ", host, ":", port);
+
+    
 
     server->acceptClients();
 

@@ -1,3 +1,2 @@
-localhost 8081 server_public2.pem
-server_public1.pem
+localhost 8080 server_public1.pem
 client_public1.pem

@@ -30,6 +30,8 @@ class Server
         return sock;
     }
 
+    int unixSocketBind();
+
 public:
     Server() : host("localhost"), port("8080"), backlog(128)
     {
@@ -40,6 +42,8 @@ public:
     {
         this->addrInfo = Server::makeDefaultAddrinfo();
     }
+
+    Server(const std::string &socketFile) : host(socketFile), backlog(128) {}
 
     Server(const std::string &host, const std::string &port, const addrinfo *addrInfo, int backlog) : host(host), port(host), addrInfo(new addrinfo(*addrInfo)), backlog(backlog) {}
 
@@ -88,6 +92,16 @@ public:
         return this->addrInfo;
     }
 
+    virtual int useCertificateFile(const std::string &certfile)
+    {
+        return -1;
+    }
+
+    virtual int usePrivateKeyFile(const std::string &privkeyfile)
+    {
+        return -1;
+    }
+
     int getServerFd() const { return this->servsock; }
 
     int getBacklog() const
@@ -101,8 +115,6 @@ public:
     }
 
     int socketBind();
-
-    int unixSocketBind();
 
     virtual Socket *acceptClient()
     {

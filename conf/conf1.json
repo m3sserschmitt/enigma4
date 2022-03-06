@@ -1,0 +1,9 @@
+{
+    "listenAddress": "localhost",
+    "listenPort": 8080,
+    "certificate": "./keys/server_cert1.pem",
+    "publicKey": "./keys/server_public1.pem",
+    "privateKey": "./keys/server_private1.pem",
+    "enigma": "./build/enigma4",
+    "socketFile": "socketFile"
+}

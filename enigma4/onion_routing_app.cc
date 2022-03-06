@@ -81,8 +81,8 @@ int OnionRoutingApp::joinNetwork(const string &netfile)
         delete newClient;
         newClient = 0;
 
-        pthread_t newThread;
-        if(pthread_create(&newThread, 0, this->newThread, conn) != 0)
+        pthread_t thread;
+        if(pthread_create(&thread, 0, newThread, conn) != 0)
         {
             continue;
         }
