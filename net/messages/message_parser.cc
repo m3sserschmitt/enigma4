@@ -52,7 +52,7 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
         return -1;
     }
 
-    this->parseNextAddress(out);
+    this->parseNextAddress(out + MESSAGE_PAYLOAD_OFFSET);
     this->reconstructNextMessage(out, outlen);
 
     delete[] out;
@@ -61,7 +61,7 @@ int MessageParser::decrypt(AES_CRYPTO ctx)
     return 0;
 }
 
-int MessageParser::removeEncryptionLayer(NodesMap *nodes)
+int MessageParser::removeEncryptionLayer(std::map<std::string, NetworkNode *> *nodes)
 {
     this->parseSessionID();
 

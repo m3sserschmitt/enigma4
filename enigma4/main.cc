@@ -1,5 +1,7 @@
 #include "tls_server.hh"
+#include "network_graph_server.hh"
 #include "onion_routing_app.hh"
+#include "network_graph_bridge.hh"
 
 #include "../util/cmd.hh"
 #include "../util/debug.hh"
@@ -68,7 +70,7 @@ int main(int argc, char **argv)
 
         SUCCESS("Certificate file successfully loaded: ", certificateFile);
 
-        if(server->usePrivateKeyFile(privkey) < 0)
+        if (server->usePrivateKeyFile(privkey) < 0)
         {
             ERROR("Failed to load private key file: ", privkey);
 
@@ -79,8 +81,7 @@ int main(int argc, char **argv)
     }
 
     OnionRoutingApp &app = OnionRoutingApp::createApp(pubkey, privkey);
-
-    server->attachApp(&app);
+    server->attachApp(app);
 
     const char *netfile = getCmdOption(argv, argc, "-netfile");
 
@@ -90,21 +91,53 @@ int main(int argc, char **argv)
     }
     else
     {
-        FAILURE("No netfile provided; network connection failed.");
+        WARNING("No netfile provided; network connection failed.");
     }
 
     if (server->socketBind() < 0)
     {
-        ERROR("Binding error.");
+        ERROR("Server binding error on ", host, ":", port);
+        return EXIT_FAILURE;
+    }
+
+    const char *bridgeHost = getCmdOption(argv, argc, "-bridgesocket");
+
+    if (bridgeHost)
+    {
+        NetworkGraphServer *bridgeServer = new NetworkGraphServer(bridgeHost);
+        NetworkGraphBridge &networkGraphBridge = NetworkGraphBridge::createApp();
+        
+        bridgeServer->attachApp(networkGraphBridge);
+
+        INFO("Starting Network Graph Bridge...");
+
+        if (bridgeServer->socketBind() < 0)
+        {
+            FAILURE("Error on starting Network Graph Bridge App");
+        }
+        else
+        {
+            if(bridgeServer->acceptClients() < 0)
+            {
+                ERROR("Failed to start Network Graph Bridge");
+                return EXIT_FAILURE;
+            }
+
+            SUCCESS("Network Graph Bridge is listening on socket file: ", bridgeHost);
+        }
+    }
+
+    if(server->acceptClients() < 0)
+    {
+        ERROR("Error on acception clients.");
         return EXIT_FAILURE;
     }
 
     INFO("Local address: ", app.getAddress());
     SUCCESS("Listening on ", host, ":", port);
+    INFO("Waiting for connections.");
 
-    
-
-    server->acceptClients();
+    server->wait();
 
     return EXIT_SUCCESS;
 }

@@ -2,8 +2,6 @@
 
 #include "../network_node.hh"
 
-#include "../../util/debug.hh"
-
 using namespace std;
 
 int MessageBuilder::encrypt(AES_CRYPTO ctx)

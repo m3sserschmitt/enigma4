@@ -1,0 +1,7 @@
+{
+    "socketFile": "/tmp/directory_node_socket",
+    "privateKey": "../keys/server_private1.pem",
+    "getGraphRoute": "/get_network_graph",
+    "neighbors": {},
+    "listenPort": 8080
+}

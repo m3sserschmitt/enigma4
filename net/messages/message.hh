@@ -115,6 +115,11 @@ public:
         return this->getPayloadPtr();
     }
 
+    const BYTE *getPayload(SIZE offset) const
+    {
+        return this->getPayloadPtr() + offset;
+    }
+
     SIZE getPayloadSize() const
     {
         return this->datalen - MESSAGE_HEADER_SIZE;
@@ -125,6 +130,13 @@ public:
         BYTES payload = this->getPayloadPtr();
         memcpy(payload, data, datalen);
         this->setPayloadSize(datalen);
+    }
+
+    void setPayload(const BYTE *data, SIZE datalen, SIZE offset)
+    {
+        BYTES ptr = this->getPayloadPtr() + offset;
+        memcpy(ptr, data, datalen);
+        this->setPayloadSize(datalen + offset);
     }
 
     void setPayload(const CHAR *data)

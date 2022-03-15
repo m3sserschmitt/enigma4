@@ -1,5 +1,4 @@
 #include "socket.hh"
-#include "../../util/debug.hh"
 
 #include <netdb.h>
 
@@ -52,7 +51,6 @@ int Socket::createConnection(const std::string &host, const std::string &port)
 
 ssize_t Socket::writeData(const MessageBuilder &mb) const
 {
-    //INFO("BYTES SENT: ", mb.getDatalen());
     return write(this->fd, mb.getData(), mb.getDatalen());
 }
 
@@ -85,7 +83,7 @@ ssize_t Socket::readNetworkData(MessageParser &mp)
 
     if (bytes_read < 0)
     {
-        printErrorDetails();
+        // printErrorDetails();
         return -1;
     }
 
