@@ -8,7 +8,8 @@
 enum ConnectionPeerType
 {
     CLIENT_PEER,
-    SERVER_PEER
+    SERVER_PEER,
+    NETWORK_GRAPH_PEER
 };
 
 class Connection
@@ -59,6 +60,11 @@ public:
 
     ConnectionPeerType getConnectionPeerType() const { return this->connectionPeerType; }
 
+    void setConnectionPeerType(ConnectionPeerType peerType)
+    {
+        this->connectionPeerType = peerType;
+    }
+
     void setConnectionPeerTypeServer()
     {
         this->connectionPeerType = SERVER_PEER;
@@ -72,6 +78,8 @@ public:
     AES_CRYPTO getEncryptionContext(const std::string &id) { return this->sessions.getEncryptionContext(id); }
 
     const std::string &getAddress() const { return this->address; }
+
+    bool hasAddress() const { return this->address.size(); }
 
     ssize_t readData(MessageParser &mp) const { return this->sock->readData(mp); }
 

@@ -2,6 +2,7 @@
 #define MESSAGE_PARSER_HH
 
 #include <map>
+#include <string.h>
 
 #include "../../libcryptography/include/cryptography.hh"
 
@@ -30,10 +31,8 @@ class MessageParser : public Message
             return;
         }
 
-        const BYTE *address_ptr = messsageRawData + MESSAGE_PAYLOAD_OFFSET;
-
         PLAINTEXT next = 0;
-        CRYPTO::hex(address_ptr, MESSAGE_ADDRESS_SIZE, &next);
+        CRYPTO::hex(messsageRawData, MESSAGE_ADDRESS_SIZE, &next);
 
         this->parseddata["next"] = next;
 
@@ -212,12 +211,20 @@ public:
 
     bool isComplete() const
     {
-        if(this->hasType(MESSAGE_INITIAL_STATE))
+        if (this->hasType(MESSAGE_INITIAL_STATE))
         {
             return false;
         }
 
         return not this->getRequiredSize();
+    }
+
+    bool isBroadcast() const { return this->hasType(MESSAGE_BRADCAST); }
+
+    void broadcast()
+    {
+        this->parseSessionID();
+        this->parseNextAddress(this->getPayload() + SESSION_ID_SIZE);
     }
 
     /**

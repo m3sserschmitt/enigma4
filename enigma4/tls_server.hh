@@ -16,6 +16,11 @@ class TlsServer : public Server
     {
         const SSL_METHOD *method = TLS_server_method();
 
+        if(not method)
+        {
+            return -1;
+        }
+
         if (not(this->sslContext = SSL_CTX_new(method)))
         {
             return -1;

@@ -10,7 +10,7 @@
 
 class Socket
 {
-    static const SIZE SOCKET_MAX_BUFFER_SIZE = 512;
+    static const SIZE SOCKET_MAX_BUFFER_SIZE = 4096;
     static const SIZE MAX_FAILED_READ_ATTEMPTS = 128;
 
     // file descriptor used to read and write data
@@ -30,7 +30,7 @@ class Socket
     /**
      * @brief When more data than required are read from socket, they are storead into local buffer
      * and this method is called to recover those extra bytes of data from previous read operation
-     * 
+     *
      * @param mp Message object to store read byte from local buffer
      * @return ssize_t number of bytes read from local buffer
      */
@@ -38,7 +38,7 @@ class Socket
 
     /**
      * @brief Read socket data
-     * 
+     *
      * @param mp Message object to store bytes read from socket
      * @return ssize_t number of byte read
      */
@@ -84,6 +84,8 @@ public:
     virtual int createConnection(const std::string &host, const std::string &port);
 
     int getFd() const { return this->fd; }
+
+    const BYTE *getBuffer() const { return this->extraBytesBuffer; }
 
     virtual void closeSocket()
     {

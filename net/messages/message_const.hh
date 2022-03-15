@@ -1,5 +1,8 @@
 #ifndef CONST_HH
 #define CONST_HH
+            
+#define DIRECTORY_NODE_ADDRESS "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+#define BROADCAST_SESSION_ID "/////////////////////w=="
 
 enum MessageConst
 {
@@ -34,6 +37,7 @@ enum MessageType
     MESSAGE_ADD_SESSION             = 0b00001000,
     MESSAGE_ENC_AES                 = 0b00010000,
     MESSAGE_ENC_RSA                 = 0b00100000,
+    MESSAGE_BRADCAST                = 0b01000000,
     MESSAGE_EXIT                    = 0b10000000
 };
 

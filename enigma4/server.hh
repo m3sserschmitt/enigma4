@@ -18,6 +18,7 @@ class Server
     int servsock;
 
     App *app;
+    pthread_t infiniteLoopThread;
 
     const Server &operator=(const Server &);
     Server(const Server &);
@@ -31,6 +32,8 @@ class Server
     }
 
     int unixSocketBind();
+
+    static void *serverInfiniteLoop(void *args);
 
 public:
     Server() : host("localhost"), port("8080"), backlog(128)
@@ -109,9 +112,9 @@ public:
         return this->backlog;
     }
 
-    void attachApp(App *app)
+    void attachApp(App &app)
     {
-        this->app = app;
+        this->app = &app;
     }
 
     int socketBind();
@@ -129,6 +132,8 @@ public:
     }
 
     int acceptClients();
+
+    void wait() const { pthread_join(this->infiniteLoopThread, 0); }
 };
 
 #endif

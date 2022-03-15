@@ -52,7 +52,6 @@ int Socket::createConnection(const std::string &host, const std::string &port)
 
 ssize_t Socket::writeData(const MessageBuilder &mb) const
 {
-    //INFO("BYTES SENT: ", mb.getDatalen());
     return write(this->fd, mb.getData(), mb.getDatalen());
 }
 

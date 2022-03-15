@@ -1,0 +1,12 @@
+{
+    "socketFile": "/tmp/directory_node_socket2",
+    "neighbors": {
+        "88e3f237977ce34ce357ac8c67a89be8486b5c552ae51ea508e4fdb9e4c13d81": {
+            "hostname": "127.0.0.1",
+            "port": 8080
+        }
+    },
+    "getGraphRoute": "/get_network_graph",
+    "privateKey": "../keys/server_private2.pem",
+    "listenPort": 8081
+}

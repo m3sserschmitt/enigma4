@@ -86,31 +86,39 @@ int Server::unixSocketBind()
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, this->host.c_str(), this->host.size());
     size_t len = strlen(addr.sun_path) + sizeof(addr.sun_family);
+
+    unlink(this->host.c_str());
+
     return bind(this->servsock, (sockaddr *)&addr, len);
+}
+
+void *Server::serverInfiniteLoop(void *args)
+{
+    if(not args)
+    {
+        return 0;
+    }
+
+    Server *server = (Server *)args;
+
+    while (true)
+    {
+        Socket *sock = server->acceptClient();
+
+        if(not sock)
+        {
+            return 0;
+        }
+
+        server->app->handleClient(sock);
+    }
+
+    return 0;
 }
 
 int Server::acceptClients()
 {
     listen(this->servsock, this->backlog);
 
-    int clientsock;
-
-    while (true)
-    {
-        Socket *sock = this->acceptClient();
-
-        if(not sock)
-        {
-            return -1;
-        }
-
-        if (not this->app)
-        {
-            break;
-        }
-
-        this->app->handleClient(sock);
-    }
-
-    return clientsock;
+    return pthread_create(&this->infiniteLoopThread, 0, this->serverInfiniteLoop, this) == 0 ? 0 : -1;
 }
