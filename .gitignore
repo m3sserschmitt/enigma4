@@ -1,5 +1,2 @@
 .vscode
 build
-*.json
-*.sh
-conf
