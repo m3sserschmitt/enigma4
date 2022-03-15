@@ -8,6 +8,7 @@
 #include "app.h"
 
 #include "../net/connection.hh"
+#include "../util/debug.hh"
 
 class OnionRoutingApp : public App
 {

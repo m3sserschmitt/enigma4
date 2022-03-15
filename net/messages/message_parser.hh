@@ -10,13 +10,13 @@
 
 #include "message.hh"
 
-#include "../../types/map_types.hh"
+//#include "../../types/map_types.hh"
 
 class Connection;
 
 class MessageParser : public Message
 {
-    Dictionary parseddata;
+    std::map<std::string, std::string> parseddata;
 
     /**
      * @brief Extract next address from message raw data
@@ -237,7 +237,7 @@ public:
      * used for decryption
      * @return int 0 if success, -1 if failure
      */
-    int removeEncryptionLayer(NodesMap *nodes);
+    int removeEncryptionLayer(std::map<std::string, NetworkNode *> *nodes);
 
     /**
      * @brief Removes one encryption layer. This method internally calls parseSessionId

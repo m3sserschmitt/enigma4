@@ -7,6 +7,7 @@
 #include "../libcryptography/include/cryptography.hh"
 
 #include "../util/cmd.hh"
+#include "../util/debug.hh"
 
 using namespace std;
 

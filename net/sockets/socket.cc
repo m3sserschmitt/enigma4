@@ -1,5 +1,4 @@
 #include "socket.hh"
-#include "../../util/debug.hh"
 
 #include <netdb.h>
 
@@ -84,7 +83,7 @@ ssize_t Socket::readNetworkData(MessageParser &mp)
 
     if (bytes_read < 0)
     {
-        printErrorDetails();
+        // printErrorDetails();
         return -1;
     }
 
