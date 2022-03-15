@@ -1,3 +1,0 @@
-localhost 3000 ./keys/server_public1.pem
-./keys/server_public2.pem
-./keys/client_public2.pem
