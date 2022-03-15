@@ -1,3 +1,6 @@
 [submodule "libcryptography"]
 	path = libcryptography
 	url = https://github.com/m3sserschmitt/libcryptography.git
+[submodule "enigma4_directory_node"]
+	path = enigma4_directory_node
+	url = https://github.com/m3sserschmitt/enigma4_directory_node
