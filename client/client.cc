@@ -3,7 +3,7 @@
 
 #include "client.hh"
 
-#include "../util/debug.hh"
+//#include "../util/debug.hh"
 
 using namespace std;
 
@@ -321,7 +321,7 @@ int Client::createConnection(const string &host, const string &port, const strin
 
     if (not this->clientSocket->isConnected())
     {
-        ERROR("Could not open connection to ", host, ":", port);
+        //ERROR("Could not open connection to ", host, ":", port);
         return -1;
     }
 

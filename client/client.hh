@@ -11,8 +11,10 @@
 
 #include "../net/sockets/socket.hh"
 
-#include "../types/map_types.hh"
-#include "../types/callbacks.hh"
+//#include "../types/map_types.hh"
+#include "./callbacks.hh"
+
+typedef std::map<std::string, NetworkNode *> NodesMap;
 
 class Client
 {
