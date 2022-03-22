@@ -1,8 +1,8 @@
 #include "onion_routing_app.hh"
 
-#include "../net/messages/message_parser.hh"
-#include "../client/tls_client.hh"
-#include "../util/debug.hh"
+#include "message/message_parser.hh"
+#include "enigma4-client/tls_client.hh"
+#include "util/debug.hh"
 
 #include <thread>
 

@@ -2,7 +2,7 @@
 #define SERVER_H
 
 #include "app.h"
-#include "../net/sockets/tls_socket.hh"
+#include "socket/tls_socket.hh"
 
 #include <netdb.h>
 #include <string>

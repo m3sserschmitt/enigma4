@@ -2,12 +2,12 @@
 #include <unistd.h>
 #include <vector>
 
-#include "../client/tls_client.hh"
+#include "enigma4-client/tls_client.hh"
 
-#include "../libcryptography/include/cryptography.hh"
+#include "cryptography/cryptography.hh"
 
-#include "../util/cmd.hh"
-#include "../util/debug.hh"
+#include "util/cmd.hh"
+#include "util/debug.hh"
 
 using namespace std;
 

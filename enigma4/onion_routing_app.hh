@@ -1,14 +1,14 @@
 #ifndef ONION_ROUTING_H
 #define ONION_ROUTING_H
 
-#include "../libcryptography/include/cryptography.hh"
+#include "cryptography/cryptography.hh"
 #include <map>
 #include <list>
 
 #include "app.h"
 
-#include "../net/connection.hh"
-#include "../util/debug.hh"
+#include "connection/connection.hh"
+#include "util/debug.hh"
 
 class OnionRoutingApp : public App
 {

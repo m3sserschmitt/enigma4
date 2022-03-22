@@ -3,8 +3,8 @@
 #include "onion_routing_app.hh"
 #include "network_graph_bridge.hh"
 
-#include "../util/cmd.hh"
-#include "../util/debug.hh"
+#include "util/cmd.hh"
+#include "util/debug.hh"
 
 #include <iostream>
 

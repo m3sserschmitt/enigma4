@@ -2,7 +2,7 @@
 #define NETWORK_GRAPH_SERVER_HH
 
 #include "server.hh"
-#include "../net/sockets/bridge_socket.hh"
+#include "socket/bridge_socket.hh"
 
 class NetworkGraphServer : public Server
 {
