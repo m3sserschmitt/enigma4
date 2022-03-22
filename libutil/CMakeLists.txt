@@ -12,6 +12,8 @@ add_library(util SHARED
 ./util/system_time.cc
 )
 
+set_target_properties(util PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION 1)
+
 add_library(util1 STATIC
 ./util/cmd.cc
 ./util/file_util.cc

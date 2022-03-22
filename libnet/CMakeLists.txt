@@ -14,6 +14,8 @@ add_library(net SHARED
 ./socket/tls_socket.cc
 )
 
+set_target_properties(net PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION 1)
+
 add_library(net1 STATIC
 ./message/message_builder.cc
 ./message/message_parser.cc
