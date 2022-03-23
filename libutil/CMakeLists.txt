@@ -21,3 +21,6 @@ add_library(util1 STATIC
 ./util/string_util.cc
 ./util/system_time.cc
 )
+
+target_link_libraries(util cryptography)
+target_link_libraries(util1 cryptography)

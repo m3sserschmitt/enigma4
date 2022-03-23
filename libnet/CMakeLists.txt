@@ -24,3 +24,10 @@ add_library(net1 STATIC
 ./socket/socket.cc
 ./socket/tls_socket.cc
 )
+
+target_link_libraries(net cryptography)
+target_link_libraries(net1 cryptography)
+target_link_libraries(net util)
+target_link_libraries(net1 util)
+target_link_libraries(net ssl)
+target_link_libraries(net1 ssl)

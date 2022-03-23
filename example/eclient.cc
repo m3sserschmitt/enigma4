@@ -8,12 +8,34 @@
 
 #include "util/cmd.hh"
 #include "util/debug.hh"
+#include <thread>
 
 using namespace std;
 
 void gen_keys()
 {
     CRYPTO::RSA_generate_keys("client_public2.pem", "client_private2.pem", 4096, 0, 0, 0, 0);
+}
+
+static void *listener(void *args)
+{
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, 0);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
+
+    Client *client = (Client *)args;
+
+    if(not client)
+    {
+        return 0;
+    }
+
+    while(true)
+    {
+        client->readData();
+        this_thread::sleep_for(chrono::milliseconds(500));
+    }
+
+    return 0;
 }
 
 void onMessageReceivedCallback(const BYTE *payload, SIZE size, const CHAR *sessionId, const CHAR *fromAddress, const CHAR *toAddress)
@@ -34,7 +56,7 @@ void onMessageReceivedCallback(const BYTE *payload, SIZE size, const CHAR *sessi
     
 }
 
-void onSessionSetCallback(const CHAR *sessionId, const CHAR *fromAddress)
+void onSessionSetCallback(const CHAR *sessionId, const BYTE *sessionKey, const SIZE sessionKeySize, const CHAR *fromAddress)
 {
     NEWLINE()
     INFO("New session set: ", sessionId, " from ", fromAddress);
@@ -94,7 +116,6 @@ int main(int argc, char **argv)
     }
 
     cout << "[+] Connection status: " << client.createConnection(tokens[0], tokens[1], tokens[2]) << "\n";
-    client.startListener();
 
     string last_address = client.getGuardAddress();
     cout << "[+] Guard address: " << last_address << "\n";
@@ -118,6 +139,9 @@ int main(int argc, char **argv)
         }
     }
 
+    pthread_t listenerThread;
+    pthread_create(&listenerThread, 0, listener, &client);
+
     string input;
 
     while (1)
@@ -133,7 +157,11 @@ int main(int argc, char **argv)
         client.writeDataWithEncryption((BYTES)input.c_str(), input.size(), last_address);
     }
 
+    pthread_cancel(listenerThread);
+    pthread_join(listenerThread, 0);
+
     client.sendExitSignal(last_address);
+    client.closeConnection();
 
     return 0;
 }

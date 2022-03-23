@@ -12,7 +12,7 @@ class TlsServerSocket : public TlsSocket
 public:
     TlsServerSocket() : TlsSocket() {}
 
-    int createConnection(const std::string &host, const std::string &port)
+    int createConnection(const std::string &host, const std::string &port, bool nonBlocking = false)
     {
         return -1;
     }

@@ -37,9 +37,9 @@ class TlsSocketClient : public TlsSocket
 public:
     TlsSocketClient() : TlsSocket() { this->initSllContext(); }
 
-    int createConnection(const std::string &host, const std::string &port)
+    int createConnection(const std::string &host, const std::string &port, bool nonBlocking = false)
     {
-        if (Socket::createConnection(host, port) < 0)
+        if (Socket::createConnection(host, port, nonBlocking) < 0)
         {
             return -1;
         }

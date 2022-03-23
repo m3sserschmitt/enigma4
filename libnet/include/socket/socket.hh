@@ -81,7 +81,7 @@ public:
         extraBytesBuffer = 0;
     }
 
-    virtual int createConnection(const std::string &host, const std::string &port);
+    virtual int createConnection(const std::string &host, const std::string &port, bool nonBlocking = false);
 
     int getFd() const { return this->fd; }
 

@@ -1,8 +1,9 @@
 #include "socket/socket.hh"
 
 #include <netdb.h>
+#include <fcntl.h>
 
-int Socket::createConnection(const std::string &host, const std::string &port)
+int Socket::createConnection(const std::string &host, const std::string &port, bool nonBlocking)
 {
     if (this->isConnected())
     {
@@ -31,6 +32,11 @@ int Socket::createConnection(const std::string &host, const std::string &port)
         {
             close(s);
             continue;
+        }
+
+        if(nonBlocking)
+        {
+            fcntl(s, F_SETFL, O_NONBLOCK);
         }
 
         if (connect(s, p->ai_addr, p->ai_addrlen) == 0)

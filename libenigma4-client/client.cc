@@ -10,8 +10,8 @@ using namespace std;
 
 Client::~Client()
 {
-    this->listenerStopWait();
-    this->closeConnection();
+    //this->listenerStopWait();
+    //this->closeConnection();
 
     std::map<std::string, NetworkNode *>::iterator it = networkNodes.begin();
     std::map<std::string, NetworkNode *>::iterator it_end = networkNodes.end();
@@ -28,11 +28,11 @@ Client::~Client()
 
     delete this->guardNode;
     delete this->clientSocket;
-    delete this->listenerContext;
+    //delete this->listenerContext;
 
     this->guardNode = 0;
     this->clientSocket = 0;
-    this->listenerContext = 0;
+    //this->listenerContext = 0;
 
     CRYPTO::RSA_CRYPTO_free(this->rsactx);
     CRYPTO::AES_CRYPTO_free(this->aesctx);
@@ -171,49 +171,36 @@ Client::MessageProcessingStatus Client::processIncomingMessage(MessageParser &mp
     return MESSAGE_DECRYPTED_SUCCESSFULLY;
 }
 
-void *Client::dataListener(void *args)
-{
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, 0);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
+// void *Client::dataListener(void *args)
+// {
+//     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, 0);
+//     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
 
-    ClientListenerContext *clientListenerContext = (ClientListenerContext *)args;
+//     Client *client = (Client *)args;
 
-    Socket *clientSocket = clientListenerContext->clientSocket;
+//     MessageParser &mp = client->listenerMessageParser;
 
-    NodesMap *networkNodes = clientListenerContext->networkNodes;
+//     while (client->clientSocket->readData(mp) > 0)
+//     {
+//         MessageProcessingStatus status = processIncomingMessage(mp, client->rsactx, client->aesctx, &client->networkNodes);
 
-    RSA_CRYPTO rsactx = clientListenerContext->rsactx;
-    AES_CRYPTO aesctx = clientListenerContext->aesctx;
+//         if (status == MESSAGE_DECRYPTED_SUCCESSFULLY and client->messageReceivedCallback)
+//         {
+//             client->messageReceivedCallback(mp.getPayload(), mp.getPayloadSize(), mp.getParsedId().c_str(), "Guard Node", mp.getParsedNextAddress().c_str());
+//         }
+//         else if (status == SESSION_SET and client->newSessionSetCallback)
+//         {
+//             client->newSessionSetCallback(mp.getParsedId().c_str(), "Guard Node");
+//         } else if(status == SESSION_CLEARED and client->sessionClearedCallback)
+//         {
+//             client->sessionClearedCallback(mp.getParsedId().c_str(), "Guard Node");
+//         }
 
-    OnMessageReceivedCallback messageReceivedCallback = clientListenerContext->messageReceivedCallback;
+//         mp.reset();
+//     }
 
-    OnNewSessionSetCallback newSessionSetCallback = clientListenerContext->newSessionSetCallback;
-
-    OnSessionClearedCallback sessionClearedCallback = clientListenerContext->sessionClearedCallback;
-
-    MessageParser &mp = clientListenerContext->mp;
-
-    while (clientSocket->readData(mp) > 0)
-    {
-        MessageProcessingStatus status = processIncomingMessage(mp, rsactx, aesctx, networkNodes);
-
-        if (status == MESSAGE_DECRYPTED_SUCCESSFULLY and messageReceivedCallback)
-        {
-            messageReceivedCallback(mp.getPayload(), mp.getPayloadSize(), mp.getParsedId().c_str(), "Guard Node", mp.getParsedNextAddress().c_str());
-        }
-        else if (status == SESSION_SET and newSessionSetCallback)
-        {
-            newSessionSetCallback(mp.getParsedId().c_str(), "Guard Node");
-        } else if(status == SESSION_CLEARED and sessionClearedCallback)
-        {
-            sessionClearedCallback(mp.getParsedId().c_str(), "Guard Node");
-        }
-
-        mp.reset();
-    }
-
-    return 0;
-}
+//     return 0;
+// }
 
 int Client::connectSocket(const std::string &host, const std::string &port)
 {
@@ -341,29 +328,15 @@ int Client::createConnection(const string &host, const string &port, const strin
     return 0;
 }
 
-int Client::startListener()
-{
-    if(not(this->listenerContext = new(nothrow) ClientListenerContext))
-    {
-        return -1;
-    }
+// int Client::startListener()
+// {
+//     if (not(this->listenerThread = new (nothrow) pthread_t))
+//     {
+//         return -1;
+//     }
 
-    if (not(this->listenerThread = new (nothrow) pthread_t))
-    {
-        return -1;
-    }
-
-    this->listenerContext->aesctx = this->aesctx;
-    this->listenerContext->rsactx = this->rsactx;
-    this->listenerContext->clientSocket = this->clientSocket;
-    this->listenerContext->networkNodes = &this->networkNodes;
-    this->listenerContext->listenerThread = this->listenerThread;
-    this->listenerContext->newSessionSetCallback = this->newSessionSetCallback;
-    this->listenerContext->sessionClearedCallback = this->sessionClearedCallback;
-    this->listenerContext->messageReceivedCallback = this->messageReceivedCallback;
-
-    return pthread_create(listenerThread, 0, this->dataListener, listenerContext) == 0;
-}
+//     return pthread_create(listenerThread, 0, this->dataListener, this) == 0;
+// }
 
 int Client::writeDataWithEncryption(MessageBuilder &mb, NetworkNode *route)
 {

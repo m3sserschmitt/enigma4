@@ -12,3 +12,7 @@ add_library(enigma4-client SHARED ./client.cc)
 set_target_properties(enigma4-client PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION 1)
 
 add_library(enigma4-client1 STATIC ./client.cc)
+
+target_link_libraries(enigma4-client cryptography)
+target_link_libraries(enigma4-client1 cryptography)
+target_link_libraries(enigma4-client net)

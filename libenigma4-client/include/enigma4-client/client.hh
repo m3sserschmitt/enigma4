@@ -13,70 +13,14 @@
 
 #include "util/file_util.hh"
 
-//#include "../types/map_types.hh"
 #include "../internal/callbacks.hh"
+
+#include <pthread.h>
 
 typedef std::map<std::string, NetworkNode *> NodesMap;
 
 class Client
 {
-    typedef struct   
-     {
-        /**
-         * @brief Socket to receive data from
-         *
-         */
-        Socket *clientSocket;
-
-        /**
-         * @brief Initialized RSA context for incoming session-establishing messages decryption
-         *
-         */
-        RSA_CRYPTO rsactx;
-
-        /**
-         * @brief Initialized AES context for incoming messages decryption
-         *
-         */
-        AES_CRYPTO aesctx;
-
-        /**
-         * @brief NetworkNode structures map
-         *
-         */
-        NodesMap *networkNodes;
-
-        /**
-         * @brief Pointer to function to be called when new message arrives
-         *
-         */
-        OnMessageReceivedCallback messageReceivedCallback;
-
-        /**
-         * @brief Pointer to function to be called when new session established from remote peer
-         *
-         */
-        OnNewSessionSetCallback newSessionSetCallback;
-
-        /**
-         * @brief Pointer to function to be called when EXIT signal received
-         *
-         */
-        OnSessionClearedCallback sessionClearedCallback;
-
-        /**
-         * @brief Object used for handling incoming message
-         * 
-         */
-        MessageParser mp;
-
-        /**
-         * @brief Pointer to listener thread
-         *
-         */
-        pthread_t *listenerThread;
-    } ClientListenerContext;
-
     /**
      * @brief Status returned by processIncomingMessage method
      *
@@ -174,17 +118,7 @@ class Client
      */
     OnSessionClearedCallback sessionClearedCallback;
 
-    /**
-     * @brief Pointer to listener thread
-     *
-     */
-    pthread_t *listenerThread;
-
-    /**
-     * @brief Listener context structure containing required crypto contexts & pointers to callback functions
-     * 
-     */
-    ClientListenerContext *listenerContext;
+    // MessageParser listenerMessageParser;
 
     /**
      * @brief Initialize RSA context for both decryption and signing
@@ -430,8 +364,6 @@ public:
     {
         this->guardNode = 0;
         this->clientSocket = 0;
-        this->listenerThread = 0;
-        this->listenerContext = 0;
         this->newSessionSetCallback = 0;
         this->sessionClearedCallback = 0;
         this->messageReceivedCallback = 0;
@@ -450,8 +382,6 @@ public:
     {
         this->guardNode = 0;
         this->clientSocket = 0;
-        this->listenerThread = 0;
-        this->listenerContext = 0;
         this->newSessionSetCallback = 0;
         this->sessionClearedCallback = 0;
         this->messageReceivedCallback = 0;
@@ -577,37 +507,37 @@ public:
      *
      * @return int 0 if success, -1 if errors occurred
      */
-    int startListener();
+    // int startListener();
 
     /**
      * @brief Stop client listener
      *
      * @return int 0 if success, -1 if errors occurred
      */
-    int stopListener()
-    {
-        if (this->listenerThread)
-        {
-            return pthread_cancel(*this->listenerThread) == 0 ? 0 : -1;
-        }
+    // int stopListener()
+    // {
+    //     if (this->listenerThread)
+    //     {
+    //         return pthread_cancel(*this->listenerThread) == 0 ? 0 : -1;
+    //     }
 
-        return -1;
-    }
+    //     return -1;
+    // }
 
     /**
      * @brief Stop client listener and for its execution to end
      *
      * @return int 0 is success, -1 if errors occurred
      */
-    int listenerStopWait()
-    {
-        if (this->stopListener() < 0)
-        {
-            return -1;
-        }
+    // int listenerStopWait()
+    // {
+    //     if (this->stopListener() < 0)
+    //     {
+    //         return -1;
+    //     }
 
-        return pthread_join(*this->listenerThread, 0) == 0 ? 0 : -1;
-    }
+    //     return pthread_join(*this->listenerThread, 0) == 0 ? 0 : -1;
+    // }
 
     /**
      * @brief Add a new node to a circuit.
@@ -649,6 +579,35 @@ public:
     int writeDataWithoutEncryption(const BYTE *data, SIZE datalen)
     {
         return this->clientSocket->writeData(data, datalen);
+    }
+
+    int readData()
+    {
+        MessageParser mp;
+
+        if(this->clientSocket->readData(mp) < 0)
+        {
+            return -1;
+        }
+
+        MessageProcessingStatus status = processIncomingMessage(mp, this->rsactx, this->aesctx, &this->networkNodes);
+
+        const CHAR *sessionId = mp.getParsedId().c_str();
+
+        if (status == MESSAGE_DECRYPTED_SUCCESSFULLY and this->messageReceivedCallback)
+        {
+            this->messageReceivedCallback(mp.getPayload(), mp.getPayloadSize(), sessionId, "Guard Node", mp.getParsedNextAddress().c_str());
+        }
+        else if (status == SESSION_SET and this->newSessionSetCallback)
+        {
+            const BYTE *sessionKey = this->networkNodes[sessionId]->getSessionKey();
+            this->newSessionSetCallback(sessionId, sessionKey, SESSION_KEY_SIZE, "Guard Node");
+        } else if(status == SESSION_CLEARED and this->sessionClearedCallback)
+        {
+            this->sessionClearedCallback(mp.getParsedId().c_str(), "Guard Node");
+        }
+
+        return 0;
     }
 
     /**

@@ -12,7 +12,7 @@ class BridgeSocket : public Socket
 public:
     BridgeSocket() : Socket() {}
 
-    int createConnection(const std::string &host, const std::string &port) { return -1; }
+    int createConnection(const std::string &host, const std::string &port, bool nonBlocking = false) { return -1; }
 
     ssize_t readData(MessageParser &mp)
     {
