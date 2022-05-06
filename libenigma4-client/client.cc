@@ -3,16 +3,10 @@
 
 #include "enigma4-client/client.hh"
 
-
-//#include "../util/debug.hh"
-
 using namespace std;
 
 Client::~Client()
 {
-    //this->listenerStopWait();
-    //this->closeConnection();
-
     std::map<std::string, NetworkNode *>::iterator it = networkNodes.begin();
     std::map<std::string, NetworkNode *>::iterator it_end = networkNodes.end();
 
@@ -28,22 +22,20 @@ Client::~Client()
 
     delete this->guardNode;
     delete this->clientSocket;
-    //delete this->listenerContext;
 
     this->guardNode = 0;
     this->clientSocket = 0;
-    //this->listenerContext = 0;
 
     CRYPTO::RSA_CRYPTO_free(this->rsactx);
     CRYPTO::AES_CRYPTO_free(this->aesctx);
 }
 
-int Client::initCrypto(const string &privkeyfile)
+int Client::initCrypto()
 {
-    if (this->loadClientPrivateKey(privkeyfile) < 0)
-    {
-        return -1;
-    }
+    // if (this->loadClientPrivateKeyPEM(privkeypem) < 0)
+    // {
+    //     return -1;
+    // }
 
     BYTES keyBuffer = 0;
     int ret = 0;
@@ -171,37 +163,6 @@ Client::MessageProcessingStatus Client::processIncomingMessage(MessageParser &mp
     return MESSAGE_DECRYPTED_SUCCESSFULLY;
 }
 
-// void *Client::dataListener(void *args)
-// {
-//     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, 0);
-//     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
-
-//     Client *client = (Client *)args;
-
-//     MessageParser &mp = client->listenerMessageParser;
-
-//     while (client->clientSocket->readData(mp) > 0)
-//     {
-//         MessageProcessingStatus status = processIncomingMessage(mp, client->rsactx, client->aesctx, &client->networkNodes);
-
-//         if (status == MESSAGE_DECRYPTED_SUCCESSFULLY and client->messageReceivedCallback)
-//         {
-//             client->messageReceivedCallback(mp.getPayload(), mp.getPayloadSize(), mp.getParsedId().c_str(), "Guard Node", mp.getParsedNextAddress().c_str());
-//         }
-//         else if (status == SESSION_SET and client->newSessionSetCallback)
-//         {
-//             client->newSessionSetCallback(mp.getParsedId().c_str(), "Guard Node");
-//         } else if(status == SESSION_CLEARED and client->sessionClearedCallback)
-//         {
-//             client->sessionClearedCallback(mp.getParsedId().c_str(), "Guard Node");
-//         }
-
-//         mp.reset();
-//     }
-
-//     return 0;
-// }
-
 int Client::connectSocket(const std::string &host, const std::string &port)
 {
     if (not this->clientSocket)
@@ -214,7 +175,10 @@ int Client::connectSocket(const std::string &host, const std::string &port)
         this->clientSocket->closeSocket();
     }
 
-    this->clientSocket->createConnection(host, port);
+    if(this->clientSocket->createConnection(host, port) < 0)
+    {
+        return -1;
+    }
 
     if (not this->clientSocket->isConnected())
     {
@@ -224,16 +188,14 @@ int Client::connectSocket(const std::string &host, const std::string &port)
     return 0;
 }
 
-const string Client::setupNetworkNode(const string &keyfile, NetworkNode **route, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
+const string Client::setupNetworkNode(const string &pubkeypem, NetworkNode **route, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
 {
-    PLAINTEXT pubkey = (PLAINTEXT)readFile(keyfile, "rb");
-
     if (route)
     {
         *route = 0;
     }
 
-    if (not pubkey)
+    if (not pubkeypem.size())
     {
         return "";
     }
@@ -242,7 +204,7 @@ const string Client::setupNetworkNode(const string &keyfile, NetworkNode **route
 
     newNetworkNode->aesctxDuplicate(this->aesctx);
 
-    if (newNetworkNode->pubkeyInit(pubkey) < 0)
+    if (newNetworkNode->pubkeyInit(pubkeypem) < 0)
     {
         return "";
     }
@@ -266,7 +228,7 @@ const string Client::setupNetworkNode(const string &keyfile, NetworkNode **route
     return newNetworkNode->getPubkeyHexDigest();
 }
 
-const string Client::addNode(const std::string &keyfile, const std::string &lastAddress, bool newSessionId)
+const string Client::addNode(const std::string &pubkeypem, const std::string &lastAddress, bool newSessionId)
 {
     NetworkNode *lastNode = networkNodes[lastAddress];
 
@@ -280,11 +242,11 @@ const string Client::addNode(const std::string &keyfile, const std::string &last
 
     if (newSessionId)
     {
-        destinationAddress = this->setupNetworkNode(keyfile, &newNode);
+        destinationAddress = this->setupNetworkNode(pubkeypem, &newNode);
     }
     else
     {
-        destinationAddress = this->setupNetworkNode(keyfile, &newNode, 0, lastNode->getId());
+        destinationAddress = this->setupNetworkNode(pubkeypem, &newNode, 0, lastNode->getId());
     }
 
     if (not newNode)
@@ -300,7 +262,14 @@ const string Client::addNode(const std::string &keyfile, const std::string &last
     return destinationAddress;
 }
 
-int Client::createConnection(const string &host, const string &port, const string &keyfile)
+const string Client::addNode2(const std::string &pubkeyfile, const std::string &lastAddress, bool newSessionId)
+{
+    PLAINTEXT pubkeypem = (PLAINTEXT)readFile(pubkeyfile, "rb");
+
+    return addNode(pubkeypem, lastAddress, newSessionId);
+}
+
+int Client::createConnection(const string &host, const string &port, const string &pubkeypem)
 {
     if (this->connectSocket(host, port) < 0)
     {
@@ -309,11 +278,15 @@ int Client::createConnection(const string &host, const string &port, const strin
 
     if (not this->clientSocket->isConnected())
     {
-        //ERROR("Could not open connection to ", host, ":", port);
         return -1;
     }
 
-    string serv_address = this->setupNetworkNode(keyfile, &this->guardNode);
+    string guardAddress = this->setupNetworkNode(pubkeypem, &this->guardNode);
+
+    if(guardAddress.empty())
+    {
+        return -1;
+    }
 
     if (not this->guardNode)
     {
@@ -328,15 +301,12 @@ int Client::createConnection(const string &host, const string &port, const strin
     return 0;
 }
 
-// int Client::startListener()
-// {
-//     if (not(this->listenerThread = new (nothrow) pthread_t))
-//     {
-//         return -1;
-//     }
+int Client::createConnection2(const string &host, const string &port, const string &pubkeyfile)
+{
+    PLAINTEXT pubkeypem = (PLAINTEXT)readFile(pubkeyfile, "rb");
 
-//     return pthread_create(listenerThread, 0, this->dataListener, this) == 0;
-// }
+    return createConnection(host, port, pubkeypem);
+}
 
 int Client::writeDataWithEncryption(MessageBuilder &mb, NetworkNode *route)
 {

@@ -125,12 +125,13 @@ int MessageParser::handshakePhaseOneRequest(RSA_CRYPTO rsadecrctx, AES_CRYPTO ct
         goto cleanup;
     }
 
-    if (CRYPTO::AES_auth_decrypt(ctx, encrkeyptr + MESSAGE_ENC_PUBKEY_SIZE, this->getPayloadSize() - MESSAGE_ENC_PUBKEY_SIZE, &decrpubkey) < 0)
+    if ((decrkeylen = CRYPTO::AES_auth_decrypt(ctx, encrkeyptr + MESSAGE_ENC_PUBKEY_SIZE, this->getPayloadSize() - MESSAGE_ENC_PUBKEY_SIZE, &decrpubkey)) < 0)
     {
         ret = -1;
         goto cleanup;
     }
-
+    
+    decrpubkey[decrkeylen] = 0;
     pubkeypem = (PLAINTEXT)decrpubkey;
 
 cleanup:

@@ -97,7 +97,10 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    TlsClient client(client_pubkey, client_privkey);
+    TlsClient client;
+
+    client.setClientPublicKeyFile(client_pubkey);
+    client.loadClientPrivateKeyFile(client_privkey);
     
     client.onMessageReceived(onMessageReceivedCallback);
     client.onSessionSet(onSessionSetCallback);
@@ -115,7 +118,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    cout << "[+] Connection status: " << client.createConnection(tokens[0], tokens[1], tokens[2]) << "\n";
+    cout << "[+] Connection status: " << client.createConnection2(tokens[0], tokens[1], tokens[2]) << "\n";
 
     string last_address = client.getGuardAddress();
     cout << "[+] Guard address: " << last_address << "\n";
@@ -131,11 +134,11 @@ int main(int argc, char **argv)
 
         if (k == circuit_length - 1)
         {
-            last_address = client.addNode(entries[k], last_address, 1);
+            last_address = client.addNode2(entries[k], last_address, 1);
         }
         else
         {
-            last_address = client.addNode(entries[k], last_address);
+            last_address = client.addNode2(entries[k], last_address);
         }
     }
 

@@ -65,9 +65,9 @@ int OnionRoutingApp::joinNetwork(const string &netfile)
         Client *newClient = new TlsClient();
 
         newClient->setClientPublicKeyPEM(OnionRoutingApp::pubkey);
-        newClient->loadClientPrivateKey(OnionRoutingApp::privkeyfile);
+        newClient->loadClientPrivateKeyFile(OnionRoutingApp::privkeyfile);
 
-        if (newClient->createConnection(tokens[0], tokens[1], tokens[2]) < 0)
+        if (newClient->createConnection2(tokens[0], tokens[1], tokens[2]) < 0)
         {
             continue;
         }

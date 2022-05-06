@@ -1,5 +1,6 @@
 #include "util/key_util.hh"
 #include "util/string_util.hh"
+#include <iostream>
 
 using namespace std;
 
@@ -9,12 +10,21 @@ int KEY_UTIL::BytesKeyFromPEM(string pem, BYTES *byteskey)
     removeFromString(pem, "-----END PUBLIC KEY-----");
     removeFromString(pem, "\n");
 
+    SIZE outlen = CRYPTO::base64_get_decoded_size(pem.c_str());
+
+    cout << "outlen: " << outlen << "\n";
+
+    if(not *byteskey and not (*byteskey = new BYTE[outlen + 1]))
+    {
+        return -1;
+    }
+
     return CRYPTO::base64_decode(pem.c_str(), byteskey);
 }
 
 int KEY_UTIL::getKeyDigest(const string &pem, BYTES *digest)
 {
-    BYTES byteskey = 0;
+    BYTES byteskey = nullptr;
     int result = BytesKeyFromPEM(pem, &byteskey);
 
     if (result < 0)
@@ -31,27 +41,27 @@ int KEY_UTIL::getKeyDigest(const string &pem, BYTES *digest)
 
 int KEY_UTIL::getKeyHexDigest(const string &pem, PLAINTEXT *address)
 {
-    BYTES digest = 0;
+    BYTES digest = nullptr;
     int result = getKeyDigest(pem, &digest);
 
     if (result < 0)
     {
         delete[] digest;
-        digest = 0;
+        digest = nullptr;
         return -1;
     }
 
     result = CRYPTO::hex(digest, result, address);
 
     delete[] digest;
-    digest = 0;
+    digest = nullptr;
 
     return result;
 }
 
 int KEY_UTIL::getKeyHexDigest(const string &pem, string &address)
 {
-    PLAINTEXT buffer = 0;
+    PLAINTEXT buffer = nullptr;
     int result = getKeyHexDigest(pem, &buffer);
 
     if(result < 0)

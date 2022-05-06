@@ -15,8 +15,6 @@
 
 #include "../internal/callbacks.hh"
 
-#include <pthread.h>
-
 typedef std::map<std::string, NetworkNode *> NodesMap;
 
 class Client
@@ -118,8 +116,6 @@ class Client
      */
     OnSessionClearedCallback sessionClearedCallback;
 
-    // MessageParser listenerMessageParser;
-
     /**
      * @brief Initialize RSA context for both decryption and signing
      *
@@ -205,7 +201,7 @@ class Client
      * @param privkeyfile Path to private key in PEM format to be used for RSA structure initialization
      * @return int 0 if success, -1 if failure
      */
-    int initCrypto(const std::string &privkeyfile);
+    int initCrypto();
 
     /**
      * @brief Initialize NetworkNode structure
@@ -218,7 +214,7 @@ class Client
      * @param idlen [Optional] Session ID size in byte, 16 by default
      * @return const std::string 64 bytes string representing address of initialized node
      */
-    const std::string setupNetworkNode(const std::string &keyfile, NetworkNode **node, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
+    const std::string setupNetworkNode(const std::string &pubkeypem, NetworkNode **node, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
 
     /**
      * @brief Create new Socket object for data reading & writing
@@ -370,6 +366,8 @@ public:
 
         this->aesctx = CRYPTO::AES_CRYPTO_new();
         this->rsactx = CRYPTO::RSA_CRYPTO_new();
+
+        this->initCrypto();
     }
 
     /**
@@ -378,7 +376,7 @@ public:
      * @param pubkeyfile Path to public key file in PEM format
      * @param privkeyfile Path to private key file in PEM format
      */
-    Client(const std::string &pubkeyfile, const std::string &privkeyfile)
+    Client(const std::string &pubkeypem, const std::string &privkeypem)
     {
         this->guardNode = 0;
         this->clientSocket = 0;
@@ -389,8 +387,10 @@ public:
         this->aesctx = CRYPTO::AES_CRYPTO_new();
         this->rsactx = CRYPTO::RSA_CRYPTO_new();
 
-        this->setClientPublicKey(pubkeyfile);
-        this->initCrypto(privkeyfile);
+        this->setClientPublicKeyPEM(pubkeypem);
+        this->loadClientPrivateKeyPEM(pubkeypem);
+
+        this->initCrypto();
     }
 
     /**
@@ -405,7 +405,7 @@ public:
      * @param pubkeyfile Path to public key file in PEM file
      * @return int 0 if success, -1 if failure
      */
-    int setClientPublicKey(const std::string &pubkeyfile)
+    int setClientPublicKeyFile(const std::string &pubkeyfile)
     {
         this->pubkeypem = (PLAINTEXT)readFile(pubkeyfile, "rb");
         return KEY_UTIL::getKeyHexDigest(this->pubkeypem, this->hexaddress) < 0 ? -1 : 0;
@@ -429,7 +429,7 @@ public:
      * @param privkeyfile Path to private key file in PEM file
      * @return int 0 if success, -1 if failure
      */
-    int loadClientPrivateKey(const std::string &privkeyfile)
+    int loadClientPrivateKeyFile(const std::string &privkeyfile)
     {
         if (CRYPTO::RSA_init_key_file(privkeyfile, 0, 0, PRIVATE_KEY, this->rsactx) < 0)
         {
@@ -488,7 +488,9 @@ public:
      * server.
      * @return int 0 if success, -1 if failure.
      */
-    int createConnection(const std::string &host, const std::string &port, const std::string &keyfile);
+    int createConnection(const std::string &host, const std::string &port, const std::string &pubkeypem);
+
+    int createConnection2(const std::string &host, const std::string &port, const std::string &pubkeyfile);
 
     /**
      * @brief Close active connection
@@ -503,43 +505,6 @@ public:
     }
 
     /**
-     * @brief Start client listener for incoming messages processing
-     *
-     * @return int 0 if success, -1 if errors occurred
-     */
-    // int startListener();
-
-    /**
-     * @brief Stop client listener
-     *
-     * @return int 0 if success, -1 if errors occurred
-     */
-    // int stopListener()
-    // {
-    //     if (this->listenerThread)
-    //     {
-    //         return pthread_cancel(*this->listenerThread) == 0 ? 0 : -1;
-    //     }
-
-    //     return -1;
-    // }
-
-    /**
-     * @brief Stop client listener and for its execution to end
-     *
-     * @return int 0 is success, -1 if errors occurred
-     */
-    // int listenerStopWait()
-    // {
-    //     if (this->stopListener() < 0)
-    //     {
-    //         return -1;
-    //     }
-
-    //     return pthread_join(*this->listenerThread, 0) == 0 ? 0 : -1;
-    // }
-
-    /**
      * @brief Add a new node to a circuit.
      *
      * @param keyfile Path to node public key in PEM format.
@@ -547,7 +512,9 @@ public:
      * @param makeNewSession If true, then a new session id is generated
      * @return const std::string Address of newly added node.
      */
-    const std::string addNode(const std::string &keyfile, const std::string &lastAddress, bool newSessionId = false);
+    const std::string addNode(const std::string &pubkeypem, const std::string &lastAddress, bool newSessionId = false);
+
+    const std::string addNode2(const std::string &pubkeyfile, const std::string &lastAddress, bool newSessionId = false);
 
     /**
      * @brief Write data to specified address.

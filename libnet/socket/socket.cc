@@ -12,7 +12,7 @@ int Socket::createConnection(const std::string &host, const std::string &port, b
 
     int s;
 
-    addrinfo addr_info;
+    struct addrinfo addr_info {};
     addr_info.ai_family = AF_INET;
     addr_info.ai_socktype = SOCK_STREAM;
     addr_info.ai_protocol = 0;
@@ -26,7 +26,7 @@ int Socket::createConnection(const std::string &host, const std::string &port, b
         return -1;
     }
 
-    for (p = res; p != NULL; p = p->ai_next)
+    for (p = res; p != nullptr; p = p->ai_next)
     {
         if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
         {
@@ -52,7 +52,7 @@ int Socket::createConnection(const std::string &host, const std::string &port, b
 
     this->fd = s;
 
-    return 0;
+    return s >= 0;
 }
 
 ssize_t Socket::writeData(const MessageBuilder &mb) const

@@ -93,7 +93,7 @@ public:
         this->fd = -1;
     };
 
-    bool isConnected() const { return this->fd > 0; }
+    bool isConnected() const { return this->fd >= 0; }
 
     virtual int wrap(int fd)
     {
