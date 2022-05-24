@@ -15,7 +15,7 @@ class NetworkNode
     BYTES keyDigest;
     PLAINTEXT keyHexDigest;
     BYTES id;
-    
+
     NetworkNode *next;
     NetworkNode *previous;
 
@@ -23,7 +23,6 @@ class NetworkNode
     const NetworkNode &operator=(const NetworkNode &);
 
 public:
-
     NetworkNode()
     {
         this->next = 0;
@@ -40,7 +39,7 @@ public:
         this->rsactx = CRYPTO::RSA_CRYPTO_new();
         this->aesctx = CRYPTO::AES_CRYPTO_new();
     }
-    
+
     ~NetworkNode()
     {
         delete[] this->keyDigest;
@@ -56,22 +55,27 @@ public:
     }
 
     AES_CRYPTO getAES() { return this->aesctx; }
-    
+
     RSA_CRYPTO getRSA() { return rsactx; }
 
     int aesctxDuplicate(const _AES_CRYPTO *aesctx)
     {
         return CRYPTO::AES_ctx_dup(this->aesctx, aesctx);
     }
-    
+
     int pubkeyInit(const std::string &pubkeypem)
     {
+        if (not pubkeypem.size())
+        {
+            return 0;
+        }
+
         if (CRYPTO::RSA_init_key(pubkeypem, 0, 0, PUBLIC_KEY, this->rsactx) < 0)
         {
             return -1;
         }
 
-        if(CRYPTO::RSA_init_ctx(this->rsactx, ENCRYPT) < 0)
+        if (CRYPTO::RSA_init_ctx(this->rsactx, ENCRYPT) < 0)
         {
             return -1;
         }
@@ -81,27 +85,27 @@ public:
 
         return 0;
     }
-    
+
     int aesctxInit(const BYTE *key = 0, SIZE keylen = 32)
     {
         if (key and keylen)
         {
-            if(CRYPTO::AES_setup_key(key, keylen, this->aesctx) < 0)
+            if (CRYPTO::AES_setup_key(key, keylen, this->aesctx) < 0)
             {
                 return -1;
             }
 
-            if(CRYPTO::AES_init_ctx(ENCRYPT, this->aesctx) < 0)
+            if (CRYPTO::AES_init_ctx(ENCRYPT, this->aesctx) < 0)
             {
                 return -1;
             }
 
-            if(CRYPTO::AES_init_ctx(DECRYPT, this->aesctx) < 0)
+            if (CRYPTO::AES_init_ctx(DECRYPT, this->aesctx) < 0)
             {
                 return -1;
             }
 
-            return  0;
+            return 0;
         }
         else
         {
@@ -114,19 +118,19 @@ public:
                 goto cleanup;
             }
 
-            if(CRYPTO::AES_setup_key(keyBuffer, AES_GCM_KEY_SIZE, this->aesctx) < 0)
+            if (CRYPTO::AES_setup_key(keyBuffer, AES_GCM_KEY_SIZE, this->aesctx) < 0)
             {
                 ret = -1;
                 goto cleanup;
             }
 
-            if(CRYPTO::AES_init_ctx(ENCRYPT, this->aesctx) < 0)
+            if (CRYPTO::AES_init_ctx(ENCRYPT, this->aesctx) < 0)
             {
                 ret = -1;
                 goto cleanup;
             }
 
-            if(CRYPTO::AES_init_ctx(DECRYPT, this->aesctx) < 0)
+            if (CRYPTO::AES_init_ctx(DECRYPT, this->aesctx) < 0)
             {
                 ret = -1;
                 goto cleanup;
@@ -155,19 +159,23 @@ public:
         return base64key;
     }
 
-    const BYTE *getPubkeydigest() const { return this->keyDigest; }
-    
+    const BYTE *getPubkeyDigest() const { return this->keyDigest; }
+
     const CHAR *getPubkeyHexDigest() const { return this->keyHexDigest; }
 
-    int setId(const BYTE *id)
+    void setPubkeyDigest(const BYTE *digest) { memcpy(this->keyDigest, digest, 32); }
+
+    void setPubkeyHexDigest(const std::string &hexdigest) { strncpy(this->keyHexDigest, hexdigest.c_str(), 64); }
+
+    int setId(const BYTE *id, SIZE idlen)
     {
         if (id)
         {
-            memcpy(this->id, id, 16);
+            memcpy(this->id, id, idlen);
             return 0;
         }
 
-        return CRYPTO::rand_bytes(16, &this->id) < 0 ? -1 : 0;
+        return CRYPTO::rand_bytes(idlen, &this->id) < 0 ? -1 : 0;
     }
 
     int setSessionKey(const BYTE *sessionKey)
@@ -182,14 +190,14 @@ public:
 
         return base64id;
     }
-    
+
     const BYTE *getId() const { return this->id; }
 
-    const BYTE *getSessionKey() 
+    const BYTE *getSessionKey()
     {
         BYTES sessionKey = 0;
 
-        if(CRYPTO::AES_read_key(this->aesctx, SESSION_KEY_SIZE, &sessionKey) < 0)
+        if (CRYPTO::AES_read_key(this->aesctx, SESSION_KEY_SIZE, &sessionKey) < 0)
         {
             delete[] sessionKey;
             sessionKey = 0;
@@ -201,11 +209,11 @@ public:
     }
 
     void setPrevious(NetworkNode *previous) { this->previous = previous; }
-    
+
     NetworkNode *getPrevious() { return this->previous; }
 
     void setNext(NetworkNode *next) { this->next = next; }
-    
+
     NetworkNode *getNext() { return this->next; }
 };
 

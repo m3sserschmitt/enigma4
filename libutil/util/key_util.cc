@@ -10,16 +10,20 @@ int KEY_UTIL::BytesKeyFromPEM(string pem, BYTES *byteskey)
     removeFromString(pem, "-----END PUBLIC KEY-----");
     removeFromString(pem, "\n");
 
-    SIZE outlen = CRYPTO::base64_get_decoded_size(pem.c_str());
-
-    cout << "outlen: " << outlen << "\n";
+    const CHAR *data = pem.c_str();
+    SIZE outlen = CRYPTO::base64_get_decoded_size(data);
 
     if(not *byteskey and not (*byteskey = new BYTE[outlen + 1]))
     {
         return -1;
     }
 
-    return CRYPTO::base64_decode(pem.c_str(), byteskey);
+    if(CRYPTO::base64_decode(data, byteskey) < 0)
+    {
+        return -1;
+    }
+
+    return outlen;
 }
 
 int KEY_UTIL::getKeyDigest(const string &pem, BYTES *digest)

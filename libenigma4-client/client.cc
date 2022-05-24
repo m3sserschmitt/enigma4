@@ -32,11 +32,6 @@ Client::~Client()
 
 int Client::initCrypto()
 {
-    // if (this->loadClientPrivateKeyPEM(privkeypem) < 0)
-    // {
-    //     return -1;
-    // }
-
     BYTES keyBuffer = 0;
     int ret = 0;
 
@@ -96,7 +91,7 @@ int Client::setupSessionFromIncomingHandshake(MessageParser &mp, RSA_CRYPTO rsac
         goto cleanup;
     }
 
-    newNode->setId(sessionId);
+    newNode->setId(sessionId, SESSION_ID_SIZE);
     newNode->setSessionKey(sessionKey);
 
     networkNodes->insert(pair<string, NetworkNode *>(mp.getParsedId(), newNode));
@@ -142,7 +137,7 @@ Client::MessageProcessingStatus Client::processIncomingMessage(MessageParser &mp
     case -1:
         return PROCESSING_ERROR; // errors
     case 0:
-        return SESSION_SET; // hanshake successful, no further actions required;
+        return SESSION_SET; // handshake successful, no further actions required;
     }
 
     switch (decryptIncomingMessage(mp, networkNodes))
@@ -175,7 +170,7 @@ int Client::connectSocket(const std::string &host, const std::string &port)
         this->clientSocket->closeSocket();
     }
 
-    if(this->clientSocket->createConnection(host, port) < 0)
+    if (this->clientSocket->createConnection(host, port) < 0)
     {
         return -1;
     }
@@ -190,17 +185,17 @@ int Client::connectSocket(const std::string &host, const std::string &port)
 
 const string Client::setupNetworkNode(const string &pubkeypem, NetworkNode **route, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
 {
-    if (route)
-    {
-        *route = 0;
-    }
-
     if (not pubkeypem.size())
     {
         return "";
     }
 
     NetworkNode *newNetworkNode = new (nothrow) NetworkNode;
+
+    if (not newNetworkNode)
+    {
+        return "";
+    }
 
     newNetworkNode->aesctxDuplicate(this->aesctx);
 
@@ -214,7 +209,7 @@ const string Client::setupNetworkNode(const string &pubkeypem, NetworkNode **rou
         return "";
     }
 
-    newNetworkNode->setId(id);
+    newNetworkNode->setId(id, idlen);
 
     const CHAR *hexdigest = newNetworkNode->getPubkeyHexDigest();
 
@@ -228,9 +223,57 @@ const string Client::setupNetworkNode(const string &pubkeypem, NetworkNode **rou
     return newNetworkNode->getPubkeyHexDigest();
 }
 
+const int Client::setupNetworkNode2(const string &address, NetworkNode **route, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen, SIZE idlen)
+{
+    if (not address.size())
+    {
+        return -1;
+    }
+
+    NetworkNode *newNetworkNode = new (nothrow) NetworkNode;
+
+    if (not newNetworkNode or newNetworkNode->aesctxDuplicate(this->aesctx) < 0)
+    {
+        return -1;
+    }
+
+    if (newNetworkNode->aesctxInit(sessionKey, keylen) < 0)
+    {
+        return -1;
+    }
+
+    if (newNetworkNode->setId(sessionId, idlen) < 0)
+    {
+        return -1;
+    }
+
+    newNetworkNode->setPubkeyHexDigest(address);
+
+    this->networkNodes[address] = newNetworkNode;
+    this->networkNodes[newNetworkNode->encodeId()] = newNetworkNode;
+
+    BYTES addressBytes = nullptr;
+    if (CRYPTO::fromHex(address.c_str(), &addressBytes) < 0)
+    {
+        delete[] addressBytes;
+        return -1;
+    }
+
+    newNetworkNode->setPubkeyDigest(addressBytes);
+
+    if (route)
+    {
+        *route = newNetworkNode;
+    }
+
+    delete[] addressBytes;
+
+    return 0;
+}
+
 const string Client::addNode(const std::string &pubkeypem, const std::string &lastAddress, bool newSessionId)
 {
-    NetworkNode *lastNode = networkNodes[lastAddress];
+    NetworkNode *lastNode = this->networkNodes[lastAddress];
 
     if (not lastNode)
     {
@@ -262,11 +305,40 @@ const string Client::addNode(const std::string &pubkeypem, const std::string &la
     return destinationAddress;
 }
 
+int Client::addNode(const string &address, const string &lastAddress, const BYTE *sessionId, const BYTE *sessionKey)
+{
+    NetworkNode *lastNode = this->networkNodes[lastAddress];
+
+    if (not lastNode)
+    {
+        return -1;
+    }
+
+    NetworkNode *newNode = this->networkNodes[address];
+
+    if (not newNode and this->setupNetworkNode2(address, &newNode, sessionKey, sessionId) < 0)
+    {
+        return -1;
+    }
+    else if (newNode)
+    {
+        newNode->setPrevious(lastNode);
+        lastNode->setNext(newNode);
+    }
+
+    return 0;
+}
+
 const string Client::addNode2(const std::string &pubkeyfile, const std::string &lastAddress, bool newSessionId)
 {
     PLAINTEXT pubkeypem = (PLAINTEXT)readFile(pubkeyfile, "rb");
 
     return addNode(pubkeypem, lastAddress, newSessionId);
+}
+
+int Client::addSession(const string &address, const BYTE *sessionId, const BYTE *sessionKey)
+{
+    return this->setupNetworkNode2(address, nullptr, sessionKey, sessionId);
 }
 
 int Client::createConnection(const string &host, const string &port, const string &pubkeypem)
@@ -283,7 +355,7 @@ int Client::createConnection(const string &host, const string &port, const strin
 
     string guardAddress = this->setupNetworkNode(pubkeypem, &this->guardNode);
 
-    if(guardAddress.empty())
+    if (guardAddress.empty())
     {
         return -1;
     }
@@ -322,7 +394,7 @@ int Client::writeDataWithEncryption(MessageBuilder &mb, NetworkNode *route)
     for (; p; p = p->getPrevious())
     {
         next = p->getNext();
-        mb.setNext((next ? next : p)->getPubkeydigest());
+        mb.setNext((next ? next : p)->getPubkeyDigest());
 
         if (mb.encrypt(p) < 0)
         {
@@ -335,7 +407,7 @@ int Client::writeDataWithEncryption(MessageBuilder &mb, NetworkNode *route)
     return this->clientSocket->writeData(mb) < 0 ? -1 : 0;
 }
 
-int Client::guardHandhsakePhaseOne(RSA_CRYPTO encrctx, AES_CRYPTO aesctx, BYTES *sessionId, BYTES *test)
+int Client::guardHandshakePhaseOne(RSA_CRYPTO encrctx, AES_CRYPTO aesctx, BYTES *sessionId, BYTES *test)
 {
     int ret = 0;
 
@@ -420,7 +492,7 @@ int Client::performGuardHandshake(NetworkNode *guardNode)
     BYTES sessionId = 0;
     BYTES test = 0;
 
-    if (this->guardHandhsakePhaseOne(guardNode->getRSA(), guardNode->getAES(), &sessionId, &test) < 0)
+    if (this->guardHandshakePhaseOne(guardNode->getRSA(), guardNode->getAES(), &sessionId, &test) < 0)
     {
         ret = -1;
         goto cleanup;
@@ -432,7 +504,7 @@ int Client::performGuardHandshake(NetworkNode *guardNode)
         goto cleanup;
     }
 
-    guardNode->setId(sessionId);
+    guardNode->setId(sessionId, SESSION_ID_SIZE);
 
 cleanup:
     delete[] sessionId;

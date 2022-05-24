@@ -148,7 +148,7 @@ class Client
     /**
      * @brief If message is handshake, then setup a new NetworkNode structure.
      *
-     * @param mp Message to be cheked
+     * @param mp Message to be checked
      * @param rsactx Initialized RSA context for session message decryption
      * @param aesctx Initialized AES context to be set for decryption into newly created NetworkNode structure
      * @param networkNodes Nodes map in which newly created NetworkNode should be inserted
@@ -162,7 +162,7 @@ class Client
      * @param mp Message to be processed
      * @param rsactx Initialized RSA context for session message decryption
      * @param aesctx Initialized AES context to be set for decryption into newly created NetworkNode structure
-     * @param nodes Nodes map used to lookup for session ID in case of AES decryption and/or exit signal or intering newly
+     * @param nodes Nodes map used to lookup for session ID in case of AES decryption and/or exit signal or entering newly
      * created NetworkNode stucture in case of new session established
      * @return int 0 if no further actions required, -1 if errors encountered, 1 if message needs
      * further actions (e.g. calls to messageReceivedCallback or newSessionSetCallback)
@@ -198,7 +198,7 @@ class Client
     /**
      * @brief Initialize RSA & AES structures
      *
-     * @param privkeyfile Path to private key in PEM format to be used for RSA structure initialization
+     * @param pubkeyfile Path to private key in PEM format to be used for RSA structure initialization
      * @return int 0 if success, -1 if failure
      */
     int initCrypto();
@@ -207,14 +207,16 @@ class Client
      * @brief Initialize NetworkNode structure
      *
      * @param keyfile Public key of destination node
-     * @param node If successfull, it contains resulting NetworkNode structure
-     * @param key [Optional] Session key. If null, then a randomly generated session key will be used
-     * @param id [Optional] Session ID. If null, then a randomly generated session ID will be used
+     * @param node If successful, it contains resulting NetworkNode structure
+     * @param sessionKey [Optional] Session key. If null, then a randomly generated session key will be used
+     * @param sessionId [Optional] Session ID. If null, then a randomly generated session ID will be used
      * @param keylen [Optional] Session key size in bytes, 32 by default
      * @param idlen [Optional] Session ID size in byte, 16 by default
      * @return const std::string 64 bytes string representing address of initialized node
      */
-    const std::string setupNetworkNode(const std::string &pubkeypem, NetworkNode **node, const BYTE *key = 0, const BYTE *id = 0, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
+    const std::string setupNetworkNode(const std::string &pubkeypem, NetworkNode **node, const BYTE *sessionKey = 0, const BYTE *sessionId = 0, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
+
+    const int setupNetworkNode2(const std::string &address, NetworkNode **node, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
 
     /**
      * @brief Create new Socket object for data reading & writing
@@ -250,7 +252,7 @@ class Client
      * @param test If successful, test will point to returned test phrase from server
      * @return int 0 is success, -1 if errors occurred
      */
-    int guardHandhsakePhaseOne(RSA_CRYPTO encrctx, AES_CRYPTO aesctx, BYTES *sessionId, BYTES *test);
+    int guardHandshakePhaseOne(RSA_CRYPTO encrctx, AES_CRYPTO aesctx, BYTES *sessionId, BYTES *test);
 
     /**
      * @brief Perform Phase Two handshake: sign test phrase returned from phase one and send back to server for authentication
@@ -339,7 +341,7 @@ class Client
     }
 
     /*
-     * Copy constructor & operator= decrared private in order to prevent a Client object to be copied
+     * Copy constructor & operator= declared private in order to prevent a Client object to be copied
      */
     Client(const Client &c);
     const Client &operator=(const Client &c);
@@ -501,6 +503,12 @@ public:
         if (this->clientSocket)
         {
             this->clientSocket->closeSocket();
+
+//            delete this->clientSocket;
+            delete this->guardNode;
+
+//            this->clientSocket = 0;
+            this->guardNode = 0;
         }
     }
 
@@ -514,7 +522,33 @@ public:
      */
     const std::string addNode(const std::string &pubkeypem, const std::string &lastAddress, bool newSessionId = false);
 
+    int addNode(const std::string &address, const std::string &lastAddress, const BYTE *sessionId, const BYTE *sessionKey);
+
     const std::string addNode2(const std::string &pubkeyfile, const std::string &lastAddress, bool newSessionId = false);
+
+    int addSession(const std::string &address, const BYTE *sessionId, const BYTE *sessionKey);
+
+    bool circuitExists(const std::string &destination)
+    {
+        NetworkNode *node = networkNodes[destination];
+
+        if(not node)
+        {
+            return false;
+        }
+
+        while(node->getPrevious())
+        {
+            node = node->getPrevious();
+        }
+
+        if(node != guardNode)
+        {
+            return false;
+        }
+
+        return true;
+    }
 
     /**
      * @brief Write data to specified address.
@@ -575,6 +609,37 @@ public:
         }
 
         return 0;
+    }
+
+    int readData(BYTES *data, std::string &sessionId)
+    {
+        MessageParser mp;
+
+        if(this->clientSocket->readData(mp) < 0)
+        {
+            return -1;
+        }
+
+        MessageProcessingStatus status = processIncomingMessage(mp, this->rsactx, this->aesctx, &this->networkNodes);
+
+        if(status == PROCESSING_ERROR || status == DECRYPTION_FAILED)
+        {
+            return -1;
+        }
+
+        const BYTE *payload = mp.getPayload();
+        SIZE payloadSize = mp.getPayloadSize();
+
+        if(not *data and not(*data = new BYTE[payloadSize + 1]))
+        {
+            return -1;
+        }
+
+        memcpy(*data, payload, payloadSize);
+        (*data)[payloadSize] = 0;
+        sessionId = mp.getParsedId();
+
+        return payloadSize;
     }
 
     /**
@@ -641,7 +706,7 @@ public:
     /**
      * @brief Get the TLS Socket Cipher
      *
-     * @return const std::string information about TLS cipher used for comunications
+     * @return const std::string information about TLS cipher used for communications
      */
     const std::string getSocketCipher() const { return this->clientSocket->getCipher(); }
 
