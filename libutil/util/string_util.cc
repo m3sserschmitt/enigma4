@@ -88,5 +88,5 @@ void removeFromString(string &from, const string &str)
         }
     }
 
-    from.resize(f_len);
+    from.resize(f_len - delta);
 }

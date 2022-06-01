@@ -469,7 +469,15 @@ public:
      *
      * @return const std::string guard address.
      */
-    const std::string getGuardAddress() const { return this->guardNode->getPubkeyHexDigest(); }
+    const std::string getGuardAddress() const
+    {
+        if(not this->guardNode)
+        {
+            return "";
+        }
+
+        return this->guardNode->getPubkeyHexDigest();
+    }
 
     /**
      * @brief Create new connection. If socket already connected, then close old connection and open a new one

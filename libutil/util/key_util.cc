@@ -9,6 +9,7 @@ int KEY_UTIL::BytesKeyFromPEM(string pem, BYTES *byteskey)
     removeFromString(pem, "-----BEGIN PUBLIC KEY-----");
     removeFromString(pem, "-----END PUBLIC KEY-----");
     removeFromString(pem, "\n");
+    // strip(pem, ' ');
 
     const CHAR *data = pem.c_str();
     SIZE outlen = CRYPTO::base64_get_decoded_size(data);
