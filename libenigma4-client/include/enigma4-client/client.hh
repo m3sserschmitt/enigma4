@@ -187,14 +187,7 @@ class Client
         return mp.removeEncryptionLayer(nodes);
     }
 
-    /**
-     * @brief Listener Thread function
-     *
-     * @param node It must be a pointer to a initialized ClientListenerContext structure
-     * @return void* This method returns null
-     */
-    static void *dataListener(void *args);
-
+    
     /**
      * @brief Initialize RSA & AES structures
      *
@@ -202,21 +195,6 @@ class Client
      * @return int 0 if success, -1 if failure
      */
     int initCrypto();
-
-    /**
-     * @brief Initialize NetworkNode structure
-     *
-     * @param keyfile Public key of destination node
-     * @param node If successful, it contains resulting NetworkNode structure
-     * @param sessionKey [Optional] Session key. If null, then a randomly generated session key will be used
-     * @param sessionId [Optional] Session ID. If null, then a randomly generated session ID will be used
-     * @param keylen [Optional] Session key size in bytes, 32 by default
-     * @param idlen [Optional] Session ID size in byte, 16 by default
-     * @return const std::string 64 bytes string representing address of initialized node
-     */
-    const std::string setupNetworkNode(const std::string &pubkeypem, NetworkNode **node, const BYTE *sessionKey = 0, const BYTE *sessionId = 0, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
-
-    const int setupNetworkNode2(const std::string &address, NetworkNode **node, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
 
     /**
      * @brief Create new Socket object for data reading & writing
@@ -521,6 +499,30 @@ public:
     }
 
     /**
+     * @brief Create and initialize a new NetworkNode structure
+     *
+     * @param keyfile Public key of destination node in PEM format
+     * @param sessionKey [Optional] Session key. If null, then a randomly generated session key will be used
+     * @param sessionId [Optional] Session ID. If null, then a randomly generated session ID will be used
+     * @param keylen [Optional] Session key size in bytes, 32 by default
+     * @param idlen [Optional] Session ID size in byte, 16 by default
+     * @return NetworkNode * newly initialized NetworkNode structure
+     */
+    NetworkNode *setupNetworkNode(const std::string &pubkeypem, const BYTE *sessionKey = 0, const BYTE *sessionId = 0, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
+
+    /**
+     * @brief Create and initialize a new NetworkNode structure
+     * 
+     * @param address Destination address 
+     * @param sessionKey [Optional] Session key. If null, then a randomly generated session key will be used
+     * @param sessionId [Optional] Session ID. If null, then a randomly generated session ID will be used
+     * @param keylen [Optional] Session key size in bytes, 32 by default
+     * @param idlen [Optional] Session ID size in byte, 16 by default
+     * @return NetworkNode* NetworkNode * newly initialized NetworkNode structure
+     */
+    NetworkNode *setupNetworkNode2(const std::string &address, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
+
+    /**
      * @brief Add a new node to a circuit.
      *
      * @param keyfile Path to node public key in PEM format.
@@ -590,65 +592,9 @@ public:
         return this->clientSocket->writeData(data, datalen);
     }
 
-    int readData()
-    {
-        MessageParser mp;
+    int readData();
 
-        if(this->clientSocket->readData(mp) < 0)
-        {
-            return -1;
-        }
-
-        MessageProcessingStatus status = processIncomingMessage(mp, this->rsactx, this->aesctx, &this->networkNodes);
-
-        const CHAR *sessionId = mp.getParsedId().c_str();
-
-        if (status == MESSAGE_DECRYPTED_SUCCESSFULLY and this->messageReceivedCallback)
-        {
-            this->messageReceivedCallback(mp.getPayload(), mp.getPayloadSize(), sessionId, "Guard Node", mp.getParsedNextAddress().c_str());
-        }
-        else if (status == SESSION_SET and this->newSessionSetCallback)
-        {
-            const BYTE *sessionKey = this->networkNodes[sessionId]->getSessionKey();
-            this->newSessionSetCallback(sessionId, sessionKey, SESSION_KEY_SIZE, "Guard Node");
-        } else if(status == SESSION_CLEARED and this->sessionClearedCallback)
-        {
-            this->sessionClearedCallback(mp.getParsedId().c_str(), "Guard Node");
-        }
-
-        return 0;
-    }
-
-    int readData(BYTES *data, std::string &sessionId)
-    {
-        MessageParser mp;
-
-        if(this->clientSocket->readData(mp) < 0)
-        {
-            return -1;
-        }
-
-        MessageProcessingStatus status = processIncomingMessage(mp, this->rsactx, this->aesctx, &this->networkNodes);
-
-        if(status == PROCESSING_ERROR || status == DECRYPTION_FAILED)
-        {
-            return -1;
-        }
-
-        const BYTE *payload = mp.getPayload();
-        SIZE payloadSize = mp.getPayloadSize();
-
-        if(not *data and not(*data = new BYTE[payloadSize + 1]))
-        {
-            return -1;
-        }
-
-        memcpy(*data, payload, payloadSize);
-        (*data)[payloadSize] = 0;
-        sessionId = mp.getParsedId();
-
-        return payloadSize;
-    }
+    int readData(BYTES *data, std::string &sessionId);
 
     /**
      * @brief Send EXIT message over circuit
@@ -725,32 +671,7 @@ public:
      *
      * @return Connection*
      */
-    Connection *getGuardConnection()
-    {
-        Connection *conn = new Connection();
-
-        if (not conn)
-        {
-            return 0;
-        }
-
-        const BYTE *sessionId = this->getGuardSessionId();
-        const BYTE *sessionKey = this->getGuardSessionKey();
-
-        conn->setSocket(this->clientSocket);
-        conn->addSession(sessionId, sessionKey);
-        conn->setAddress(this->guardNode->getPubkeyHexDigest());
-
-        this->clientSocket = 0;
-
-        delete[] sessionId;
-        delete[] sessionKey;
-
-        sessionId = 0;
-        sessionKey = 0;
-
-        return conn;
-    }
+    Connection *getGuardConnection();
 };
 
 #endif

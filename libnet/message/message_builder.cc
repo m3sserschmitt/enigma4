@@ -20,7 +20,7 @@ int MessageBuilder::encrypt(AES_CRYPTO ctx)
     }
 
     this->setPayload(out, result);
-    this->addIfPressentOrOverrideMessageType(MESSAGE_EXIT, MESSAGE_ENC_AES);
+    this->addIfPresentOrOverrideMessageType(MESSAGE_EXIT, MESSAGE_ENC_AES);
 
     delete[] out;
     return 0;

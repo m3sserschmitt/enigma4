@@ -183,68 +183,79 @@ int Client::connectSocket(const std::string &host, const std::string &port)
     return 0;
 }
 
-const string Client::setupNetworkNode(const string &pubkeypem, NetworkNode **route, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
+NetworkNode *Client::setupNetworkNode(const string &pubkeypem, const BYTE *key, const BYTE *id, SIZE keylen, SIZE idlen)
 {
     if (not pubkeypem.size())
     {
-        return "";
+        return nullptr;
     }
 
     NetworkNode *newNetworkNode = new (nothrow) NetworkNode;
 
     if (not newNetworkNode)
     {
-        return "";
+        return nullptr;
     }
 
-    newNetworkNode->aesctxDuplicate(this->aesctx);
+    if (newNetworkNode->aesctxDuplicate(this->aesctx) < 0)
+    {
+        delete newNetworkNode;
+        return nullptr;
+    }
 
     if (newNetworkNode->pubkeyInit(pubkeypem) < 0)
     {
-        return "";
+        delete newNetworkNode;
+        return nullptr;
     }
 
     if (newNetworkNode->aesctxInit(key, keylen) < 0)
     {
-        return "";
+        delete newNetworkNode;
+        return nullptr;
     }
 
-    newNetworkNode->setId(id, idlen);
+    if (newNetworkNode->setId(id, idlen) < 0)
+    {
+        delete newNetworkNode;
+        return nullptr;
+    }
 
     const CHAR *hexdigest = newNetworkNode->getPubkeyHexDigest();
-
     this->networkNodes[hexdigest] = newNetworkNode;
 
-    if (route)
-    {
-        *route = newNetworkNode;
-    }
-
-    return newNetworkNode->getPubkeyHexDigest();
+    return newNetworkNode;
 }
 
-const int Client::setupNetworkNode2(const string &address, NetworkNode **route, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen, SIZE idlen)
+NetworkNode *Client::setupNetworkNode2(const string &address, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen, SIZE idlen)
 {
     if (not address.size())
     {
-        return -1;
+        return nullptr;
     }
 
     NetworkNode *newNetworkNode = new (nothrow) NetworkNode;
 
-    if (not newNetworkNode or newNetworkNode->aesctxDuplicate(this->aesctx) < 0)
+    if (not newNetworkNode)
     {
-        return -1;
+        return nullptr;
+    }
+
+    if (newNetworkNode->aesctxDuplicate(this->aesctx) < 0)
+    {
+        return nullptr;
     }
 
     if (newNetworkNode->aesctxInit(sessionKey, keylen) < 0)
     {
-        return -1;
+        delete newNetworkNode;
+        return nullptr;
     }
 
     if (newNetworkNode->setId(sessionId, idlen) < 0)
     {
-        return -1;
+        delete newNetworkNode;
+        return nullptr;
     }
 
     newNetworkNode->setPubkeyHexDigest(address);
@@ -256,19 +267,15 @@ const int Client::setupNetworkNode2(const string &address, NetworkNode **route, 
     if (CRYPTO::fromHex(address.c_str(), &addressBytes) < 0)
     {
         delete[] addressBytes;
-        return -1;
+        delete newNetworkNode;
+        return nullptr;
     }
 
     newNetworkNode->setPubkeyDigest(addressBytes);
 
-    if (route)
-    {
-        *route = newNetworkNode;
-    }
-
     delete[] addressBytes;
 
-    return 0;
+    return newNetworkNode;
 }
 
 const string Client::addNode(const std::string &pubkeypem, const std::string &lastAddress, bool newSessionId)
@@ -281,15 +288,14 @@ const string Client::addNode(const std::string &pubkeypem, const std::string &la
     }
 
     NetworkNode *newNode;
-    string destinationAddress;
 
     if (newSessionId)
     {
-        destinationAddress = this->setupNetworkNode(pubkeypem, &newNode);
+        newNode = this->setupNetworkNode(pubkeypem);
     }
     else
     {
-        destinationAddress = this->setupNetworkNode(pubkeypem, &newNode, 0, lastNode->getId());
+        newNode = this->setupNetworkNode(pubkeypem, nullptr, lastNode->getId());
     }
 
     if (not newNode)
@@ -302,7 +308,7 @@ const string Client::addNode(const std::string &pubkeypem, const std::string &la
 
     this->addNewSession(newNode);
 
-    return destinationAddress;
+    return newNode->getPubkeyHexDigest();
 }
 
 int Client::addNode(const string &address, const string &lastAddress, const BYTE *sessionId, const BYTE *sessionKey)
@@ -316,7 +322,7 @@ int Client::addNode(const string &address, const string &lastAddress, const BYTE
 
     NetworkNode *newNode = this->networkNodes[address];
 
-    if (not newNode and this->setupNetworkNode2(address, &newNode, sessionKey, sessionId) < 0)
+    if (not newNode and not(newNode = this->setupNetworkNode2(address, sessionKey, sessionId)))
     {
         return -1;
     }
@@ -329,6 +335,37 @@ int Client::addNode(const string &address, const string &lastAddress, const BYTE
     return 0;
 }
 
+int Client::readData(BYTES *data, std::string &sessionId)
+{
+    MessageParser mp;
+
+    if (this->clientSocket->readData(mp) < 0)
+    {
+        return -1;
+    }
+
+    MessageProcessingStatus status = processIncomingMessage(mp, this->rsactx, this->aesctx, &this->networkNodes);
+
+    if (status == PROCESSING_ERROR || status == DECRYPTION_FAILED)
+    {
+        return -1;
+    }
+
+    const BYTE *payload = mp.getPayload();
+    SIZE payloadSize = mp.getPayloadSize();
+
+    if (not *data and not(*data = new BYTE[payloadSize + 1]))
+    {
+        return -1;
+    }
+
+    memcpy(*data, payload, payloadSize);
+    (*data)[payloadSize] = 0;
+    sessionId = mp.getParsedId();
+
+    return payloadSize;
+}
+
 const string Client::addNode2(const std::string &pubkeyfile, const std::string &lastAddress, bool newSessionId)
 {
     PLAINTEXT pubkeypem = (PLAINTEXT)readFile(pubkeyfile, "rb");
@@ -336,9 +373,39 @@ const string Client::addNode2(const std::string &pubkeyfile, const std::string &
     return addNode(pubkeypem, lastAddress, newSessionId);
 }
 
+int Client::readData()
+{
+    MessageParser mp;
+
+    if (this->clientSocket->readData(mp) < 0)
+    {
+        return -1;
+    }
+
+    MessageProcessingStatus status = processIncomingMessage(mp, this->rsactx, this->aesctx, &this->networkNodes);
+
+    const CHAR *sessionId = mp.getParsedId().c_str();
+
+    if (status == MESSAGE_DECRYPTED_SUCCESSFULLY and this->messageReceivedCallback)
+    {
+        this->messageReceivedCallback(mp.getPayload(), mp.getPayloadSize(), sessionId, "Guard Node", mp.getParsedNextAddress().c_str());
+    }
+    else if (status == SESSION_SET and this->newSessionSetCallback)
+    {
+        const BYTE *sessionKey = this->networkNodes[sessionId]->getSessionKey();
+        this->newSessionSetCallback(sessionId, sessionKey, SESSION_KEY_SIZE, "Guard Node");
+    }
+    else if (status == SESSION_CLEARED and this->sessionClearedCallback)
+    {
+        this->sessionClearedCallback(mp.getParsedId().c_str(), "Guard Node");
+    }
+
+    return 0;
+}
+
 int Client::addSession(const string &address, const BYTE *sessionId, const BYTE *sessionKey)
 {
-    return this->setupNetworkNode2(address, nullptr, sessionKey, sessionId);
+    return this->setupNetworkNode2(address, sessionKey, sessionId) ? 0 : -1;
 }
 
 int Client::createConnection(const string &host, const string &port, const string &pubkeypem)
@@ -353,20 +420,26 @@ int Client::createConnection(const string &host, const string &port, const strin
         return -1;
     }
 
-    string guardAddress = this->setupNetworkNode(pubkeypem, &this->guardNode);
-
-    if (guardAddress.empty())
+    this->guardNode = this->setupNetworkNode(pubkeypem);
+    
+    if(not this->guardNode)
     {
         return -1;
     }
 
-    if (not this->guardNode)
+    string guardAddress = this->guardNode->getPubkeyHexDigest();
+
+    if (guardAddress.empty())
     {
+        delete this->guardNode;
+        this->guardNode = 0;
         return -1;
     }
 
     if (this->performGuardHandshake(this->guardNode) < 0)
     {
+        delete this->guardNode;
+        this->guardNode = 0;
         return -1;
     }
 
@@ -380,9 +453,9 @@ int Client::createConnection2(const string &host, const string &port, const stri
     return createConnection(host, port, pubkeypem);
 }
 
-int Client::writeDataWithEncryption(MessageBuilder &mb, NetworkNode *route)
+int Client::writeDataWithEncryption(MessageBuilder &mb, NetworkNode *node)
 {
-    NetworkNode *p = route;
+    NetworkNode *p = node;
 
     if (mb.hasAtLeastOneType(MESSAGE_HANDSHAKE_PHASE_ONE | MESSAGE_HANDSHAKE_PHASE_TWO | MESSAGE_ADD_SESSION))
     {
@@ -514,4 +587,31 @@ cleanup:
     test = 0;
 
     return ret;
+}
+
+Connection *Client::getGuardConnection()
+{
+    Connection *conn = new Connection();
+
+    if (not conn)
+    {
+        return 0;
+    }
+
+    const BYTE *sessionId = this->getGuardSessionId();
+    const BYTE *sessionKey = this->getGuardSessionKey();
+
+    conn->setSocket(this->clientSocket);
+    conn->addSession(sessionId, sessionKey);
+    conn->setAddress(this->guardNode->getPubkeyHexDigest());
+
+    this->clientSocket = 0;
+
+    delete[] sessionId;
+    delete[] sessionKey;
+
+    sessionId = 0;
+    sessionKey = 0;
+
+    return conn;
 }

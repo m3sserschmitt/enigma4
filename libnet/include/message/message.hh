@@ -203,7 +203,7 @@ public:
      * @param checkType Type to be checked
      * @param newType New type to be added / set.
      */
-    void addIfPressentOrOverrideMessageType(int checkType, int newType)
+    void addIfPresentOrOverrideMessageType(int checkType, int newType)
     {
         if (this->hasAtLeastOneType(checkType))
         {
