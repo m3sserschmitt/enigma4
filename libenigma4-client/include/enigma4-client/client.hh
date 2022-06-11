@@ -202,25 +202,7 @@ class Client
      */
     virtual void makeSocket() { this->clientSocket = new Socket(); }
 
-    /**
-     * @brief Send handshake message to a destination node
-     *
-     * @param destinationNode Destination node
-     * @return int 0 if success, -1 if failure
-     */
-    int addNewSession(NetworkNode *destinationNode)
-    {
-        if (not destinationNode)
-        {
-            return -1;
-        }
-
-        MessageBuilder mb;
-        mb.addSessionMessage(destinationNode->getId(), destinationNode->getSessionKey(), destinationNode->getRSA());
-
-        return this->writeDataWithEncryption(mb, destinationNode) < 0 ? -1 : 0;
-    }
-
+    
     /**
      * @brief Perform Phase One handshake: send handshake message containing session key and wait for server response containing session id & test phrase
      *
@@ -510,6 +492,8 @@ public:
      */
     NetworkNode *setupNetworkNode(const std::string &pubkeypem, const BYTE *sessionKey = 0, const BYTE *sessionId = 0, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
 
+    NetworkNode *setupNetworkNode2(const std::string &pubkeyfile, const BYTE *sessionKey = 0, const BYTE *sessionId = 0, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
+
     /**
      * @brief Create and initialize a new NetworkNode structure
      * 
@@ -520,7 +504,9 @@ public:
      * @param idlen [Optional] Session ID size in byte, 16 by default
      * @return NetworkNode* NetworkNode * newly initialized NetworkNode structure
      */
-    NetworkNode *setupNetworkNode2(const std::string &address, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
+    NetworkNode *setupNetworkNode3(const std::string &address, const BYTE *sessionKey = 0, const BYTE *sessionId = 0, SIZE keylen = SESSION_KEY_SIZE, SIZE idlen = SESSION_ID_SIZE);
+
+
 
     /**
      * @brief Add a new node to a circuit.
@@ -530,13 +516,34 @@ public:
      * @param makeNewSession If true, then a new session id is generated
      * @return const std::string Address of newly added node.
      */
-    const std::string addNode(const std::string &pubkeypem, const std::string &lastAddress, bool newSessionId = false);
+    const std::string addNodeToCircuit(const std::string &pubkeypem, const std::string &lastAddress, bool newSessionId = false);
 
-    int addNode(const std::string &address, const std::string &lastAddress, const BYTE *sessionId, const BYTE *sessionKey);
+    const std::string addNodeToCircuit2(const std::string &pubkeyfile, const std::string &lastAddress, bool newSessionId = false);
 
-    const std::string addNode2(const std::string &pubkeyfile, const std::string &lastAddress, bool newSessionId = false);
+    int addNodeToCircuit(const std::string &address, const std::string &lastAddress, const BYTE *sessionId, const BYTE *sessionKey);
+
+    int addNodeToCircuit(NetworkNode *node, const std::string &lastAddress);
 
     int addSession(const std::string &address, const BYTE *sessionId, const BYTE *sessionKey);
+
+    /**
+     * @brief Send handshake message to a destination node
+     *
+     * @param destinationNode Destination node
+     * @return int 0 if success, -1 if failure
+     */
+    int addNewSession(NetworkNode *destinationNode)
+    {
+        if (not destinationNode)
+        {
+            return -1;
+        }
+
+        MessageBuilder mb;
+        mb.addSessionMessage(destinationNode->getId(), destinationNode->getSessionKey(), destinationNode->getRSA());
+
+        return this->writeDataWithEncryption(mb, destinationNode) < 0 ? -1 : 0;
+    }
 
     bool circuitExists(const std::string &destination)
     {

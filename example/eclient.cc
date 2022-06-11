@@ -134,11 +134,11 @@ int main(int argc, char **argv)
 
         if (k == circuit_length - 1)
         {
-            last_address = client.addNode2(entries[k], last_address, 1);
+            last_address = client.addNodeToCircuit2(entries[k], last_address, 1);
         }
         else
         {
-            last_address = client.addNode2(entries[k], last_address);
+            last_address = client.addNodeToCircuit2(entries[k], last_address);
         }
     }
 

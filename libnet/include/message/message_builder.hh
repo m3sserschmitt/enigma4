@@ -73,7 +73,7 @@ public:
      * @brief Create Phase Two handshake message
      * 
      * @param sessionId Session id returned from server in handshake phase one
-     * @param test Test phrase used for authentication returned from server in hanshake phase one
+     * @param test Test phrase used for authentication returned from server in handshake phase one
      * @param signctx RSA context used for test phrase signing
      * @return int 0 if success, -1 if failure;
      */

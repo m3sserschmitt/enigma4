@@ -134,12 +134,12 @@ int main(int argc, char **argv)
 
         if (k == circuit_length - 1)
         {
-            client.addNode(entries[k], last_address, (const BYTE *)"1111111111111111", (const BYTE *)"11111111111111111111111111111111");
+            client.addNodeToCircuit(entries[k], last_address, (const BYTE *)"1111111111111111", (const BYTE *)"11111111111111111111111111111111");
             last_address = entries[k];
         }
         else
         {
-            last_address = client.addNode2(entries[k], last_address);
+            last_address = client.addNodeToCircuit2(entries[k], last_address);
         }
     }
 

@@ -227,7 +227,14 @@ NetworkNode *Client::setupNetworkNode(const string &pubkeypem, const BYTE *key, 
     return newNetworkNode;
 }
 
-NetworkNode *Client::setupNetworkNode2(const string &address, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen, SIZE idlen)
+NetworkNode *Client::setupNetworkNode2(const std::string &pubkeyfile, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen, SIZE idlen)
+{
+    PLAINTEXT pubkeypem = (PLAINTEXT)readFile(pubkeyfile, "rb");
+
+    return this->setupNetworkNode(pubkeypem, sessionKey, sessionId, keylen, idlen);
+}
+
+NetworkNode *Client::setupNetworkNode3(const string &address, const BYTE *sessionKey, const BYTE *sessionId, SIZE keylen, SIZE idlen)
 {
     if (not address.size())
     {
@@ -278,7 +285,7 @@ NetworkNode *Client::setupNetworkNode2(const string &address, const BYTE *sessio
     return newNetworkNode;
 }
 
-const string Client::addNode(const std::string &pubkeypem, const std::string &lastAddress, bool newSessionId)
+const string Client::addNodeToCircuit(const std::string &pubkeypem, const std::string &lastAddress, bool newSessionId)
 {
     NetworkNode *lastNode = this->networkNodes[lastAddress];
 
@@ -311,7 +318,7 @@ const string Client::addNode(const std::string &pubkeypem, const std::string &la
     return newNode->getPubkeyHexDigest();
 }
 
-int Client::addNode(const string &address, const string &lastAddress, const BYTE *sessionId, const BYTE *sessionKey)
+int Client::addNodeToCircuit(const string &address, const string &lastAddress, const BYTE *sessionId, const BYTE *sessionKey)
 {
     NetworkNode *lastNode = this->networkNodes[lastAddress];
 
@@ -322,7 +329,7 @@ int Client::addNode(const string &address, const string &lastAddress, const BYTE
 
     NetworkNode *newNode = this->networkNodes[address];
 
-    if (not newNode and not(newNode = this->setupNetworkNode2(address, sessionKey, sessionId)))
+    if (not newNode and not(newNode = this->setupNetworkNode3(address, sessionKey, sessionId)))
     {
         return -1;
     }
@@ -331,6 +338,21 @@ int Client::addNode(const string &address, const string &lastAddress, const BYTE
         newNode->setPrevious(lastNode);
         lastNode->setNext(newNode);
     }
+
+    return 0;
+}
+
+int Client::addNodeToCircuit(NetworkNode *node, const std::string &lastAddress)
+{
+    NetworkNode *lastNode = this->networkNodes[lastAddress];
+
+    if (not lastNode)
+    {
+        return -1;
+    }
+
+    node->setPrevious(lastNode);
+    lastNode->setNext(node);
 
     return 0;
 }
@@ -366,11 +388,11 @@ int Client::readData(BYTES *data, std::string &sessionId)
     return payloadSize;
 }
 
-const string Client::addNode2(const std::string &pubkeyfile, const std::string &lastAddress, bool newSessionId)
+const string Client::addNodeToCircuit2(const std::string &pubkeyfile, const std::string &lastAddress, bool newSessionId)
 {
     PLAINTEXT pubkeypem = (PLAINTEXT)readFile(pubkeyfile, "rb");
 
-    return addNode(pubkeypem, lastAddress, newSessionId);
+    return addNodeToCircuit(pubkeypem, lastAddress, newSessionId);
 }
 
 int Client::readData()
@@ -405,7 +427,7 @@ int Client::readData()
 
 int Client::addSession(const string &address, const BYTE *sessionId, const BYTE *sessionKey)
 {
-    return this->setupNetworkNode2(address, sessionKey, sessionId) ? 0 : -1;
+    return this->setupNetworkNode3(address, sessionKey, sessionId) ? 0 : -1;
 }
 
 int Client::createConnection(const string &host, const string &port, const string &pubkeypem)
