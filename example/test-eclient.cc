@@ -158,7 +158,9 @@ int main(int argc, char **argv)
             break;
         }
 
-        client.writeDataWithEncryption((BYTES)input.c_str(), input.size(), last_address);
+        string content = "{\"address\": \"" + client.getClientHexaddress() + "\", \"guardAddress\": \"" + client.getGuardAddress() + "\", " + "\"message\": \"" + input + "\"}";
+
+        client.writeDataWithEncryption((BYTES)content.c_str(), content.size(), last_address);
     }
 
     pthread_cancel(listenerThread);
