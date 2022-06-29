@@ -1,0 +1,1 @@
+./build/eclient -pubkey ./keys/client_public2.pem -privkey ./keys/client_private2.pem -circuit ./conf/circuit2

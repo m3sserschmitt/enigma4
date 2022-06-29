@@ -1,0 +1,1 @@
+./build/enigma4 -host localhost -port 3001 -pubkey ./keys/server_public2.pem -privkey ./keys/server_private2.pem -certificate ./keys/server_cert2.pem -bridgesocket /tmp/directory_node_socket2 -netfile ./conf/netfile2

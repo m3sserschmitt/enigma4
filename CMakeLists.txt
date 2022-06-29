@@ -17,15 +17,15 @@ enigma4/onion_routing_app.cc
 enigma4/main.cc
 )
 
-target_link_libraries(enigma4 enigma4-client net util cryptography ssl)
+target_link_libraries(enigma4 enigma4-client net util cryptography ssl pthread)
 
 add_executable(eclient example/eclient.cc)
 add_executable(test-eclient example/test-eclient.cc)
 add_executable(circuit_example example/circuit_example.cc)
 
-target_link_libraries(eclient enigma4-client net util cryptography ssl)
-target_link_libraries(test-eclient enigma4-client net util cryptography ssl)
-target_link_libraries(circuit_example enigma4-client)
+target_link_libraries(eclient enigma4-client net util cryptography ssl pthread)
+target_link_libraries(test-eclient enigma4-client net util cryptography ssl pthread)
+target_link_libraries(circuit_example enigma4-client pthread)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

@@ -109,6 +109,7 @@ int main(int argc, char **argv)
     cout << "[+] Client address: " << client.getClientHexaddress() << "\n";
 
     string circuit_file_content = (const char *)readFile(circuit_file, "r");
+    circuit_file_content = strip(circuit_file_content, '\n');
     vector<string> entries = split(circuit_file_content, "\n", -1);
     vector<string> tokens = split(entries[0], " ", -1);
 
