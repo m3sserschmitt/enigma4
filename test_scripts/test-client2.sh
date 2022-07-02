@@ -1,0 +1,1 @@
+../build/test-eclient -pubkey ../test_keys/client_public2.pem -privkey ../test_keys/client_private2.pem -circuit ../test_conf/circuit2-test

@@ -1,0 +1,3 @@
+localhost 3000 ../test_keys/server_public1.pem
+../test_keys/server_public2.pem
+2a9781cf031580a180b3487113651f3531c198d047bb66f51133c8ef2f2ae33c

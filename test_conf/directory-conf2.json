@@ -7,6 +7,6 @@
         }
     },
     "getGraphRoute": "/get_network_graph",
-    "privateKey": "./keys/server_private2.pem",
+    "privateKey": "../test_keys/server_private2.pem",
     "listenPort": 8081
 }

@@ -1,0 +1,1 @@
+../build/enigma4 -host localhost -port 3000 -pubkey ../test_keys/server_public1.pem -privkey ../test_keys/server_private1.pem -certificate ../test_keys/server_cert1.pem -bridgesocket /tmp/directory_node_socket

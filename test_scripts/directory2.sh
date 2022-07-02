@@ -1,0 +1,1 @@
+node ../enigma4_directory_node/index.js ../test_conf/directory-conf2.json
